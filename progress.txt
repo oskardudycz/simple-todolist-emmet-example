@@ -1,3 +1,19 @@
+## [2026-08-22] - Task Tasks
+- What was implemented: STATE_VIEW slice "Tasks" (context "Todo List") — TasksProjection reacting to TaskAdded (insert) and TaskResolved (delete), tasks table migration, and GET /api/query/tasks-collection route.
+- Files changed:
+  - src/slices/todolist/TodoListEvents.ts (added TaskResolved event to union — owning "Resolve Task" slice is still Planned, declared it now from its slice.json fields)
+  - supabase/migrations/V2__tasks.sql (new)
+  - src/slices/todolist/tasks/TasksProjection.ts (new)
+  - src/slices/todolist/tasks/Tasks.test.ts (new)
+  - src/slices/todolist/tasks/routes.ts (new)
+  - src/common/loadPostgresEventstore.ts (registered TasksProjection)
+  - .build-kit/.slices/Todo List/index.json (status -> Done)
+  - .build-kit/.slices/Todo List/tasks/slice.json (status -> Done)
+  - .build-kit/AGENTS.md (learnings)
+- Board sync: attempted update-slice-status (InProgress) via root .eventmodelers/config.json credentials — API rejected with "invalid token". .build-kit/.eventmodelers/config.json only has an install-manifest.json (no real config), so per the Ralph "Important" note, board/platform communication was skipped and status tracked locally only.
+- **Learnings for future iterations:** see Codebase Patterns and .build-kit/AGENTS.md — readmodel fields (id, name only, no status flag) plus a "Resolved"-named id-only inbound event implies delete-from-projection, not an invented completed flag.
+---
+
 ## Codebase Patterns
 - Routes are auto-discovered by server.ts via glob `dist/src/slices/**/routes{,-*}.js` — no manual route registration needed (skip skill's "wire up the route" step for this project).
 - Context directory names under `src/slices/` follow the same lowercase-no-spaces convention as slice folders in index.json (e.g. context "Todo List" -> `src/slices/todolist/`).

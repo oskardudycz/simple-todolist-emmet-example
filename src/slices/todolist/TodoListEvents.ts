@@ -17,4 +17,8 @@ export type TaskAdded = Event<'TaskAdded', {
     name: string;
 }, CommonMeta>;
 
-export type TodoListEvents = TodoListDefined | TaskAdded;
+export type TaskResolved = Event<'TaskResolved', {
+    id: string;
+}, CommonMeta>;
+
+export type TodoListEvents = TodoListDefined | TaskAdded | TaskResolved;
