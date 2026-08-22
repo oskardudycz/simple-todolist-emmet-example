@@ -39,3 +39,18 @@
   - .build-kit/AGENTS.md (learnings)
 - **Learnings for future iterations:** see Codebase Patterns section above (supabase stubs file, core/readmodel helper doesn't exist, Docker daemon must be running for testcontainers).
 ---
+
+## [2026-08-22] - Task Add task
+
+- What was implemented: STATE_CHANGE slice "Add task" (context "Todo List") — AddTask command, TaskAdded event, decider test, and POST /api/addtask/:id route.
+- Files changed:
+  - src/slices/todolist/TodoListEvents.ts (added TaskAdded event to union)
+  - src/slices/todolist/addtask/AddTaskCommand.ts (new)
+  - src/slices/todolist/addtask/AddTask.test.ts (new)
+  - src/slices/todolist/addtask/routes.ts (new)
+  - .build-kit/.slices/Todo List/index.json (status -> Done)
+  - .build-kit/.slices/Todo List/addtask/slice.json (status -> Done)
+- **Learnings for future iterations:**
+  - Neither the "Add task" command/event nor the sibling "Tasks" readmodel carry a todoList/listId field in slice.json, despite the context name — all elements share `aggregate: "default"` with no aggregateDependencies, so tasks are intentionally not scoped to a specific list at the data-model level. Followed slice.json as source of truth rather than inferring list-scoping from the HTML_SCREEN mockup.
+  - `specifications[]` and `storylines[]` were empty again — wrote a single happy-path DeciderSpecification test, consistent with the "Define list" precedent.
+---

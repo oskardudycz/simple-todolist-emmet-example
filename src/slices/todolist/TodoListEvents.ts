@@ -12,4 +12,9 @@ export type TodoListDefined = Event<'TodoListDefined', {
     name: string;
 }, CommonMeta>;
 
-export type TodoListEvents = TodoListDefined;
+export type TaskAdded = Event<'TaskAdded', {
+    id: string;
+    name: string;
+}, CommonMeta>;
+
+export type TodoListEvents = TodoListDefined | TaskAdded;
