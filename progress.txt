@@ -1,0 +1,22 @@
+## Codebase Patterns
+- Routes are auto-discovered by server.ts via glob `dist/src/slices/**/routes{,-*}.js` — no manual route registration needed (skip skill's "wire up the route" step for this project).
+- Context directory names under `src/slices/` follow the same lowercase-no-spaces convention as slice folders in index.json (e.g. context "Todo List" -> `src/slices/todolist/`).
+- Root project has its own `package.json`/`node_modules`, separate from `.build-kit/node_modules` — run `npm install` at repo root before `npm run build`/tests.
+- No `.git` repository existed at project start; initialized with `main` as the default branch and a `node_modules/`, `dist/`, `.env` entries added to `.gitignore` before the first commit.
+- `.build-kit/.eventmodelers/config.json` is absent in this project, so per the Ralph "Important" note, all platform/board communication (update-slice-status, MCP) is skipped — work stays local only.
+
+## [2026-08-22] - Task Define list
+
+- What was implemented: STATE_CHANGE slice "Define list" (context "Todo List") — DefineList command, TodoListDefined event, decider tests, and POST /api/definelist/:id route.
+- Files changed:
+  - src/slices/todolist/TodoListEvents.ts (new)
+  - src/slices/todolist/definelist/DefineListCommand.ts (new)
+  - src/slices/todolist/definelist/DefineList.test.ts (new)
+  - src/slices/todolist/definelist/routes.ts (new)
+  - .build-kit/.slices/Todo List/index.json (status -> Done)
+  - .build-kit/.slices/Todo List/definelist/slice.json (status -> Done)
+- **Learnings for future iterations:**
+  - slice.json had empty `specifications[]` and no `storylines[]` — wrote a single happy-path DeciderSpecification test derived directly from the command/event field definitions since no business rule/idempotency constraint was specified anywhere (description/comments were empty), per the "don't invent business rules" rule in build-state-change skill.
+  - The slice also carries an `HTML_SCREEN` node with a full localStorage-only demo page — that's UI-kit scope, not build-kit; build-state-change skill does not cover screens, so it was left untouched.
+  - `test-analyzer` skill referenced in the Ralph instructions is not installed in `.claude/skills/` for this project — step was skipped as not actionable.
+---
