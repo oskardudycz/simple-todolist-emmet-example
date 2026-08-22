@@ -1,0 +1,196 @@
+{
+  "id": "0f1c7823-8a26-41ee-9e74-e58fa159535a",
+  "status": "Planned",
+  "title": "Define list",
+  "context": "Todo List",
+  "sliceType": "STATE_CHANGE",
+  "commands": [
+    {
+      "id": "a975f474-7efc-49fa-92df-cfca522b5393",
+      "tags": [],
+      "lane": "Interaction",
+      "elementContext": "INTERNAL",
+      "modelContext": "Todo List",
+      "context": "INTERNAL",
+      "slice": "Define list",
+      "title": "Define list",
+      "fields": [
+        {
+          "name": "id",
+          "optional": false,
+          "showAttributes": false,
+          "technicalAttribute": false,
+          "query": false,
+          "generated": false,
+          "edited": false,
+          "idAttribute": false,
+          "pii": false,
+          "type": "String",
+          "cardinality": "Single",
+          "subfields": []
+        },
+        {
+          "name": "name",
+          "optional": false,
+          "showAttributes": false,
+          "technicalAttribute": false,
+          "query": false,
+          "generated": false,
+          "edited": false,
+          "idAttribute": false,
+          "pii": false,
+          "type": "String",
+          "cardinality": "Single",
+          "subfields": []
+        }
+      ],
+      "type": "COMMAND",
+      "description": "",
+      "aggregate": "default",
+      "aggregateDependencies": [],
+      "dependencies": [
+        {
+          "id": "fd43f452-2c95-41a2-a23b-2eb42dc24e47",
+          "type": "OUTBOUND",
+          "title": "Todo List Defined",
+          "elementType": "EVENT"
+        },
+        {
+          "id": "9336f436-245c-49c7-8756-9f0c5e358426",
+          "type": "INBOUND",
+          "title": "HTML Screen",
+          "elementType": "HTML_SCREEN"
+        }
+      ],
+      "listElement": false,
+      "todoList": false,
+      "createsAggregate": false,
+      "triggers": [],
+      "elementCopy": false,
+      "linkedId": "a975f474-7efc-49fa-92df-cfca522b5393",
+      "sketched": false,
+      "prototype": {
+        "activeByDefault": false
+      },
+      "comments": []
+    }
+  ],
+  "events": [
+    {
+      "id": "fd43f452-2c95-41a2-a23b-2eb42dc24e47",
+      "tags": [],
+      "lane": "Swimlane",
+      "elementContext": "INTERNAL",
+      "modelContext": "Todo List",
+      "context": "INTERNAL",
+      "slice": "Define list",
+      "title": "Todo List Defined",
+      "fields": [
+        {
+          "name": "id",
+          "optional": false,
+          "showAttributes": false,
+          "technicalAttribute": false,
+          "query": false,
+          "generated": false,
+          "edited": false,
+          "idAttribute": false,
+          "pii": false,
+          "type": "String",
+          "cardinality": "Single",
+          "subfields": []
+        },
+        {
+          "name": "name",
+          "optional": false,
+          "showAttributes": false,
+          "technicalAttribute": false,
+          "query": false,
+          "generated": false,
+          "edited": false,
+          "idAttribute": false,
+          "pii": false,
+          "type": "String",
+          "cardinality": "Single",
+          "subfields": []
+        }
+      ],
+      "type": "EVENT",
+      "description": "",
+      "aggregate": "default",
+      "aggregateDependencies": [],
+      "dependencies": [
+        {
+          "id": "0868d82d-f822-4fda-9ae2-75a8dfff82c9",
+          "type": "OUTBOUND",
+          "title": "Todo Lists",
+          "elementType": "READMODEL"
+        },
+        {
+          "id": "a975f474-7efc-49fa-92df-cfca522b5393",
+          "type": "INBOUND",
+          "title": "Define list",
+          "elementType": "COMMAND"
+        }
+      ],
+      "listElement": false,
+      "todoList": false,
+      "createsAggregate": false,
+      "triggers": [],
+      "elementCopy": false,
+      "linkedId": "fd43f452-2c95-41a2-a23b-2eb42dc24e47",
+      "sketched": false,
+      "prototype": {
+        "activeByDefault": false
+      },
+      "comments": []
+    }
+  ],
+  "readmodels": [],
+  "screens": [
+    {
+      "id": "9336f436-245c-49c7-8756-9f0c5e358426",
+      "tags": [],
+      "lane": "Actor",
+      "modelContext": "Todo List",
+      "slice": "Define list",
+      "title": "HTML Screen",
+      "fields": [],
+      "type": "HTML_SCREEN",
+      "description": "",
+      "aggregate": "default",
+      "aggregateDependencies": [],
+      "dependencies": [
+        {
+          "id": "a975f474-7efc-49fa-92df-cfca522b5393",
+          "type": "OUTBOUND",
+          "title": "Define list",
+          "elementType": "COMMAND"
+        }
+      ],
+      "createsAggregate": false,
+      "triggers": [],
+      "elementCopy": false,
+      "linkedId": "9336f436-245c-49c7-8756-9f0c5e358426",
+      "sketched": false,
+      "prototype": {
+        "activeByDefault": false
+      },
+      "comments": [],
+      "pages": [
+        "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>Daily Tasks</title>\n<style>\n  :root {\n    --bg: #f5f7fb;\n    --surface: #ffffff;\n    --text: #172033;\n    --muted: #8992a5;\n    --line: #e8ebf2;\n    --accent: #6c5ce7;\n    --accent-soft: #eeeaff;\n    --green: #21b573;\n    --shadow: 0 12px 35px rgba(30, 38, 60, .08);\n  }\n  * { box-sizing: border-box; }\n  body {\n    margin: 0;\n    background: var(--bg);\n    color: var(--text);\n    font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;\n  }\n  button, input { font: inherit; }\n  button { cursor: pointer; border: 0; }\n  .app { display: flex; min-height: 100vh; }\n  aside {\n    width: 250px; background: #151827; color: white; padding: 28px 18px;\n    display: flex; flex-direction: column;\n  }\n  .brand { font-size: 21px; font-weight: 800; padding: 0 12px 30px; letter-spacing: -.5px; }\n  .brand span { color: #8d7cff; }\n  .nav-label { color: #777e95; text-transform: uppercase; font-size: 11px; font-weight: 700; letter-spacing: 1px; padding: 0 12px 10px; }\n  .day {\n    display: flex; align-items: center; gap: 10px; padding: 11px 12px;\n    border-radius: 10px; color: #c8ccda; margin-bottom: 4px;\n  }\n  .day.active { background: #292c40; color: white; }\n  .day .count { margin-left: auto; color: #858ba0; font-size: 12px; }\n  .new-list {\n    margin: 18px 8px; padding: 12px; border: 1px dashed #4a4e62;\n    background: transparent; color: #b9bdd0; border-radius: 10px;\n  }\n  .new-list:hover { border-color: #8174ef; color: white; }\n  .side-bottom { margin-top: auto; color: #777e95; font-size: 12px; padding: 12px; }\n  main { flex: 1; padding: 34px 42px; max-width: 1100px; margin: auto; width: 100%; }\n  .top { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom: 28px; }\n  .eyebrow { color: var(--accent); font-weight: 750; font-size: 13px; margin-bottom: 5px; }\n  h1 { margin:0; font-size: 31px; letter-spacing:-1px; }\n  .date { color:var(--muted); margin-top:4px; }\n  .close-day {\n    background: var(--text); color:white; padding:11px 17px; border-radius:10px; font-weight:700;\n  }\n  .close-day:hover { transform: translateY(-1px); }\n  .grid { display:grid; grid-template-columns: 1fr 1fr; gap:20px; }\n  .list {\n    background: var(--surface); border:1px solid var(--line); border-radius:16px;\n    box-shadow: var(--shadow); overflow:hidden;\n  }\n  .list-head { padding:18px 20px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line); }\n  .list-title { display:flex; align-items:center; gap:10px; font-size:17px; font-weight:800; }\n  .dot { width:10px; height:10px; border-radius:50%; background:var(--accent); }\n  .list-meta { color:var(--muted); font-size:12px; }\n  .tasks { padding:8px 20px; }\n  .task {\n    display:flex; align-items:center; gap:12px; min-height:52px; border-bottom:1px solid #f0f1f5;\n  }\n  .task:last-child { border-bottom:0; }\n  .check {\n    width:21px; height:21px; border:2px solid #ccd1dd; border-radius:7px; background:white;\n    flex:0 0 auto; display:grid; place-items:center; color:white;\n  }\n  .task.done .check { background:var(--green); border-color:var(--green); }\n  .task.done .check:after { content:\"✓\"; font-size:13px; font-weight:900; }\n  .task.done .task-text { color:#a3a9b8; text-decoration:line-through; }\n  .task-text { flex:1; }\n  .delete { color:#c2c7d2; background:none; font-size:18px; padding:6px; }\n  .delete:hover { color:#e25568; }\n  .add {\n    display:flex; gap:8px; padding:12px 20px 18px;\n  }\n  .add input {\n    min-width:0; flex:1; border:1px solid var(--line); border-radius:9px; padding:10px 12px; outline:none;\n  }\n  .add input:focus { border-color:#b4aaf6; box-shadow:0 0 0 3px var(--accent-soft); }\n  .add button {\n    background:var(--accent); color:white; border-radius:9px; padding:0 14px; font-weight:750;\n  }\n  .empty { color:#a0a7b6; padding:15px 0; font-size:13px; }\n  .closed { opacity:.68; }\n  .closed .list-head { background:#fafafd; }\n  .closed-label { color:var(--green); font-size:12px; font-weight:800; }\n  .fab {\n    position:fixed; right:32px; bottom:28px; width:52px; height:52px; border-radius:50%;\n    background:var(--accent); color:white; font-size:27px; box-shadow:0 10px 25px rgba(108,92,231,.35);\n  }\n  @media(max-width:800px) {\n    aside { width:72px; padding:20px 8px; }\n    .brand { font-size:0; text-align:center; padding:5px 0 25px; }\n    .brand span { font-size:22px; }\n    .nav-label,.day span:not(.count),.new-list,.side-bottom { display:none; }\n    .day { justify-content:center; }\n    .day .count { display:none; }\n    main { padding:24px 18px; }\n    .grid { grid-template-columns:1fr; }\n  }\n</style>\n</head>\n<body>\n<div class=\"app\">\n  <aside>\n    <div class=\"brand\">daily<span>.</span></div>\n    <div class=\"nav-label\">Your days</div>\n    <div id=\"days\"></div>\n    <button class=\"new-list\" onclick=\"addList()\">＋ New list</button>\n    <div class=\"side-bottom\">Keep it simple.<br>One day at a time.</div>\n  </aside>\n\n  <main>\n    <div class=\"top\">\n      <div>\n        <div class=\"eyebrow\">TODAY</div>\n        <h1 id=\"dateTitle\"></h1>\n        <div class=\"date\">A focused day starts with a clear list.</div>\n      </div>\n      <button class=\"close-day\" onclick=\"closeDay()\">Close day</button>\n    </div>\n    <div class=\"grid\" id=\"lists\"></div>\n  </main>\n  <button class=\"fab\" onclick=\"addList()\" title=\"New list\">＋</button>\n</div>\n\n<script>\nconst key = 'daily-task-app';\nlet state = JSON.parse(localStorage.getItem(key) || 'null') || {\n  days: {\n    [new Date().toISOString().slice(0,10)]: {\n      closed:false,\n      lists:[\n        {id:1,name:'Work',tasks:[\n          {id:1,text:'Review open pull requests',done:false},\n          {id:2,text:'Prepare client workshop',done:false},\n          {id:3,text:'Reply to important emails',done:true}\n        ]},\n        {id:2,name:'Personal',tasks:[\n          {id:4,text:'Go for a walk',done:false},\n          {id:5,text:'Buy groceries',done:false}\n        ]}\n      ]\n    }\n  }\n};\nlet current = new Date().toISOString().slice(0,10);\n\nfunction save(){ localStorage.setItem(key, JSON.stringify(state)); }\nfunction dayData(){ return state.days[current]; }\nfunction ensureDay(){ if(!state.days[current]) state.days[current]={closed:false,lists:[]}; }\n\nfunction fmtDate(iso){\n  return new Date(iso+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});\n}\nfunction render(){\n  ensureDay();\n  document.getElementById('dateTitle').textContent=fmtDate(current);\n  const data=dayData();\n  document.getElementById('lists').innerHTML=data.lists.map(list=>{\n    const done=list.tasks.filter(t=>t.done).length;\n    return `<section class=\"list ${data.closed?'closed':''}\">\n      <div class=\"list-head\">\n        <div>\n          <div class=\"list-title\"><i class=\"dot\"></i>${escapeHtml(list.name)}</div>\n          <div class=\"list-meta\">${done}/${list.tasks.length} completed</div>\n        </div>\n        ${data.closed?'<div class=\"closed-label\">CLOSED</div>':''}\n      </div>\n      <div class=\"tasks\">\n        ${list.tasks.length ? list.tasks.map(t=>`\n          <div class=\"task ${t.done?'done':''}\">\n            <button class=\"check\" onclick=\"toggleTask(${list.id},${t.id})\"></button>\n            <div class=\"task-text\">${escapeHtml(t.text)}</div>\n            <button class=\"delete\" onclick=\"deleteTask(${list.id},${t.id})\">×</button>\n          </div>`).join('') : '<div class=\"empty\">No tasks yet.</div>'}\n      </div>\n      ${!data.closed?`<div class=\"add\">\n        <input id=\"input-${list.id}\" placeholder=\"Add a task...\" onkeydown=\"if(event.key==='Enter')addTask(${list.id})\">\n        <button onclick=\"addTask(${list.id})\">Add</button>\n      </div>`:''}\n    </section>`;\n  }).join('');\n  renderDays();\n}\nfunction renderDays(){\n  const dates=Object.keys(state.days).sort().reverse();\n  document.getElementById('days').innerHTML=dates.map(d=>{\n    const count=state.days[d].lists.reduce((n,l)=>n+l.tasks.filter(t=>!t.done).length,0);\n    return `<div class=\"day ${d===current?'active':''}\" onclick=\"switchDay('${d}')\">\n      <span>${d===current?'●':'○'}</span><span>${fmtDate(d).split(',')[0]}</span><span class=\"count\">${count}</span>\n    </div>`;\n  }).join('');\n}\nfunction switchDay(d){ current=d; render(); }\nfunction toggleTask(lid,tid){\n  const t=dayData().lists.find(l=>l.id===lid).tasks.find(t=>t.id===tid);\n  t.done=!t.done; save(); render();\n}\nfunction deleteTask(lid,tid){\n  const l=dayData().lists.find(l=>l.id===lid);\n  l.tasks=l.tasks.filter(t=>t.id!==tid); save(); render();\n}\nfunction addTask(lid){\n  const input=document.getElementById('input-'+lid);\n  const text=input.value.trim(); if(!text) return;\n  const l=dayData().lists.find(l=>l.id===lid);\n  l.tasks.push({id:Date.now(),text,done:false}); save(); render();\n  setTimeout(()=>document.getElementById('input-'+lid)?.focus(),0);\n}\nfunction addList(){\n  ensureDay();\n  const name=prompt('Name your new list:', 'New list');\n  if(!name?.trim()) return;\n  dayData().lists.push({id:Date.now(),name:name.trim(),tasks:[]});\n  save(); render();\n}\nfunction closeDay(){\n  if(dayData().closed) return;\n  if(confirm('Close this day? You will no longer be able to add or change tasks.')){\n    dayData().closed=true; save(); render();\n  }\n}\nfunction escapeHtml(s){\n  return s.replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#039;'}[c]));\n}\nrender();\n</script>\n</body>\n</html>"
+      ]
+    }
+  ],
+  "screenImages": [],
+  "screenLayouts": [],
+  "processors": [],
+  "tables": [],
+  "specifications": [],
+  "storylines": [],
+  "chapter": "Todo List",
+  "codeGen": {},
+  "notes": [],
+  "comments": [],
+  "aggregates": []
+}

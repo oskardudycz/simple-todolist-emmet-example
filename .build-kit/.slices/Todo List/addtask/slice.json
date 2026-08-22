@@ -1,0 +1,162 @@
+{
+  "id": "6ea6021a-6902-4e26-a469-27685248a061",
+  "status": "Planned",
+  "title": "Add task",
+  "context": "Todo List",
+  "sliceType": "STATE_CHANGE",
+  "commands": [
+    {
+      "id": "04fbee9b-220b-4b1a-a175-fb18302bf235",
+      "tags": [],
+      "lane": "Interaction",
+      "elementContext": "INTERNAL",
+      "modelContext": "Todo List",
+      "context": "INTERNAL",
+      "slice": "Add task",
+      "title": "Add task",
+      "fields": [
+        {
+          "name": "id",
+          "optional": false,
+          "showAttributes": false,
+          "technicalAttribute": false,
+          "query": false,
+          "generated": false,
+          "edited": false,
+          "idAttribute": false,
+          "pii": false,
+          "type": "String",
+          "cardinality": "Single",
+          "subfields": []
+        },
+        {
+          "name": "name",
+          "optional": false,
+          "showAttributes": false,
+          "technicalAttribute": false,
+          "query": false,
+          "generated": false,
+          "edited": false,
+          "idAttribute": false,
+          "pii": false,
+          "type": "String",
+          "cardinality": "Single",
+          "subfields": []
+        }
+      ],
+      "type": "COMMAND",
+      "description": "",
+      "aggregate": "default",
+      "aggregateDependencies": [],
+      "dependencies": [
+        {
+          "id": "c6cf278b-e56f-4d8c-85b1-554d19b35f87",
+          "type": "OUTBOUND",
+          "title": "Task Added",
+          "elementType": "EVENT"
+        },
+        {
+          "id": "74011625-6421-46cc-814b-7543c065bcd4",
+          "type": "INBOUND",
+          "title": "Todo Lists",
+          "elementType": "HTML_SCREEN"
+        }
+      ],
+      "listElement": false,
+      "todoList": false,
+      "createsAggregate": false,
+      "triggers": [],
+      "elementCopy": false,
+      "linkedId": "04fbee9b-220b-4b1a-a175-fb18302bf235",
+      "sketched": false,
+      "prototype": {
+        "activeByDefault": false
+      },
+      "comments": []
+    }
+  ],
+  "events": [
+    {
+      "id": "c6cf278b-e56f-4d8c-85b1-554d19b35f87",
+      "tags": [],
+      "lane": "Swimlane",
+      "elementContext": "INTERNAL",
+      "modelContext": "Todo List",
+      "context": "INTERNAL",
+      "slice": "Add task",
+      "title": "Task Added",
+      "fields": [
+        {
+          "name": "id",
+          "optional": false,
+          "showAttributes": false,
+          "technicalAttribute": false,
+          "query": false,
+          "generated": false,
+          "edited": false,
+          "idAttribute": false,
+          "pii": false,
+          "type": "String",
+          "cardinality": "Single",
+          "subfields": []
+        },
+        {
+          "name": "name",
+          "optional": false,
+          "showAttributes": false,
+          "technicalAttribute": false,
+          "query": false,
+          "generated": false,
+          "edited": false,
+          "idAttribute": false,
+          "pii": false,
+          "type": "String",
+          "cardinality": "Single",
+          "subfields": []
+        }
+      ],
+      "type": "EVENT",
+      "description": "",
+      "aggregate": "default",
+      "aggregateDependencies": [],
+      "dependencies": [
+        {
+          "id": "620963d9-91c6-430b-88e5-e83eb5f9628c",
+          "type": "OUTBOUND",
+          "title": "Tasks",
+          "elementType": "READMODEL"
+        },
+        {
+          "id": "04fbee9b-220b-4b1a-a175-fb18302bf235",
+          "type": "INBOUND",
+          "title": "Add task",
+          "elementType": "COMMAND"
+        }
+      ],
+      "listElement": false,
+      "todoList": false,
+      "createsAggregate": false,
+      "triggers": [],
+      "elementCopy": false,
+      "linkedId": "c6cf278b-e56f-4d8c-85b1-554d19b35f87",
+      "sketched": false,
+      "prototype": {
+        "activeByDefault": false
+      },
+      "comments": []
+    }
+  ],
+  "readmodels": [],
+  "screens": [],
+  "screenImages": [],
+  "screenLayouts": [],
+  "processors": [],
+  "tables": [],
+  "specifications": [],
+  "storylines": [],
+  "chapter": "Todo List",
+  "codeGen": {},
+  "notes": [],
+  "comments": [],
+  "aggregates": []
+}

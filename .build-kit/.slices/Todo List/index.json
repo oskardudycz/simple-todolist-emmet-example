@@ -1,0 +1,52 @@
+{
+  "slices": [
+    {
+      "id": "0f1c7823-8a26-41ee-9e74-e58fa159535a",
+      "slice": "Define list",
+      "index": 0,
+      "context": "Todo List",
+      "folder": "definelist",
+      "status": "Planned"
+    },
+    {
+      "id": "20a0942f-52db-485a-a2a7-088782072ca0",
+      "slice": "Todo Lists",
+      "index": 0,
+      "context": "Todo List",
+      "folder": "todolists",
+      "status": "Planned"
+    },
+    {
+      "id": "6ea6021a-6902-4e26-a469-27685248a061",
+      "slice": "Add task",
+      "index": 0,
+      "context": "Todo List",
+      "folder": "addtask",
+      "status": "Planned"
+    },
+    {
+      "id": "e93d20c9-eee8-477c-b1f5-3c4fad20d368",
+      "slice": "Tasks",
+      "index": 0,
+      "context": "Todo List",
+      "folder": "tasks",
+      "status": "Planned"
+    },
+    {
+      "id": "237240cb-64d9-46a0-9fa5-4a18cbafa10c",
+      "slice": "Resolve Task",
+      "index": 0,
+      "context": "Todo List",
+      "folder": "resolvetask",
+      "status": "Planned"
+    },
+    {
+      "id": "7038cdf0-e956-48f4-97e9-470b00db2103",
+      "slice": "Delete Task",
+      "index": 0,
+      "context": "Todo List",
+      "folder": "deletetask",
+      "status": "Planned"
+    }
+  ]
+}

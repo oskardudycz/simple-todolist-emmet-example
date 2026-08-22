@@ -1,0 +1,134 @@
+{
+  "id": "237240cb-64d9-46a0-9fa5-4a18cbafa10c",
+  "status": "Planned",
+  "title": "Resolve Task",
+  "context": "Todo List",
+  "sliceType": "STATE_CHANGE",
+  "commands": [
+    {
+      "id": "fab18804-3383-4c3e-b640-e5901ac53ce7",
+      "tags": [],
+      "lane": "Interaction",
+      "elementContext": "INTERNAL",
+      "modelContext": "Todo List",
+      "context": "INTERNAL",
+      "slice": "Resolve Task",
+      "title": "Resolve Task",
+      "fields": [
+        {
+          "name": "id",
+          "optional": false,
+          "showAttributes": false,
+          "technicalAttribute": false,
+          "query": false,
+          "generated": false,
+          "edited": false,
+          "idAttribute": false,
+          "pii": false,
+          "type": "String",
+          "cardinality": "Single",
+          "subfields": []
+        }
+      ],
+      "type": "COMMAND",
+      "description": "",
+      "aggregate": "default",
+      "aggregateDependencies": [],
+      "dependencies": [
+        {
+          "id": "9f5098e6-c7f9-4cd1-a676-48d90cea89da",
+          "type": "OUTBOUND",
+          "title": "Task Resolved",
+          "elementType": "EVENT"
+        },
+        {
+          "id": "ddef5622-2dee-4621-a530-dcb70a173ebb",
+          "type": "INBOUND",
+          "title": "Todo Lists",
+          "elementType": "HTML_SCREEN"
+        }
+      ],
+      "listElement": false,
+      "todoList": false,
+      "createsAggregate": false,
+      "triggers": [],
+      "elementCopy": false,
+      "linkedId": "fab18804-3383-4c3e-b640-e5901ac53ce7",
+      "sketched": false,
+      "prototype": {
+        "activeByDefault": false
+      },
+      "comments": []
+    }
+  ],
+  "events": [
+    {
+      "id": "9f5098e6-c7f9-4cd1-a676-48d90cea89da",
+      "tags": [],
+      "lane": "Swimlane",
+      "elementContext": "INTERNAL",
+      "modelContext": "Todo List",
+      "context": "INTERNAL",
+      "slice": "Resolve Task",
+      "title": "Task Resolved",
+      "fields": [
+        {
+          "name": "id",
+          "optional": false,
+          "showAttributes": false,
+          "technicalAttribute": false,
+          "query": false,
+          "generated": false,
+          "edited": false,
+          "idAttribute": false,
+          "pii": false,
+          "type": "String",
+          "cardinality": "Single",
+          "subfields": []
+        }
+      ],
+      "type": "EVENT",
+      "description": "",
+      "aggregate": "default",
+      "aggregateDependencies": [],
+      "dependencies": [
+        {
+          "id": "620963d9-91c6-430b-88e5-e83eb5f9628c",
+          "type": "OUTBOUND",
+          "title": "Tasks",
+          "elementType": "READMODEL"
+        },
+        {
+          "id": "fab18804-3383-4c3e-b640-e5901ac53ce7",
+          "type": "INBOUND",
+          "title": "Resolve Task",
+          "elementType": "COMMAND"
+        }
+      ],
+      "listElement": false,
+      "todoList": false,
+      "createsAggregate": false,
+      "triggers": [],
+      "elementCopy": false,
+      "linkedId": "9f5098e6-c7f9-4cd1-a676-48d90cea89da",
+      "sketched": false,
+      "prototype": {
+        "activeByDefault": false
+      },
+      "comments": []
+    }
+  ],
+  "readmodels": [],
+  "screens": [],
+  "screenImages": [],
+  "screenLayouts": [],
+  "processors": [],
+  "tables": [],
+  "specifications": [],
+  "storylines": [],
+  "chapter": "Todo List",
+  "codeGen": {},
+  "notes": [],
+  "comments": [],
+  "aggregates": []
+}
