@@ -83,3 +83,17 @@
 - Board sync: skipped — `.build-kit/.eventmodelers/config.json` absent (only install-manifest.json), per established pattern; status tracked locally only.
 - **Learnings for future iterations:** No new learnings — this slice confirmed prior AGENTS.md notes (empty specifications -> single happy-path test; no listId scoping; TaskResolved event/projection handling were already in place from the earlier "Tasks" slice).
 ---
+
+## [2026-08-22] - Task Delete Task
+
+- What was implemented: STATE_CHANGE slice "Delete Task" (context "Todo List") -- DeleteTask command, TaskDeleted event, decider test, and POST /api/deletetask/:id route.
+- Files changed:
+  - src/slices/todolist/TodoListEvents.ts (added TaskDeleted event to union)
+  - src/slices/todolist/deletetask/DeleteTaskCommand.ts (new)
+  - src/slices/todolist/deletetask/DeleteTask.test.ts (new)
+  - src/slices/todolist/deletetask/routes.ts (new)
+  - .build-kit/.slices/Todo List/index.json (status -> Done)
+  - .build-kit/.slices/Todo List/deletetask/slice.json (status -> Done)
+- Board sync: skipped -- .build-kit/.eventmodelers/config.json absent (only install-manifest.json), per established pattern; status tracked locally only.
+- **Learnings for future iterations:** No new learnings -- this slice confirmed prior AGENTS.md notes. Note: the existing "Tasks" readmodel's slice.json only declares INBOUND dependencies on "Task Added"/"Task Resolved", not "Task Deleted" -- since that readmodel's own slice.json (already Done) wasn't updated to add this dependency, TasksProjection was intentionally left untouched rather than inferring that a delete-task action should also remove rows from the Tasks read model. If that's actually desired, it needs to show up as a dependency on the Tasks readmodel in the board/slice.json first.
+---

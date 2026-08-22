@@ -1,6 +1,6 @@
 {
   "id": "7038cdf0-e956-48f4-97e9-470b00db2103",
-  "status": "Planned",
+  "status": "Done",
   "title": "Delete Task",
   "context": "Todo List",
   "sliceType": "STATE_CHANGE",
