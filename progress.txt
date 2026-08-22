@@ -70,3 +70,16 @@
   - Neither the "Add task" command/event nor the sibling "Tasks" readmodel carry a todoList/listId field in slice.json, despite the context name — all elements share `aggregate: "default"` with no aggregateDependencies, so tasks are intentionally not scoped to a specific list at the data-model level. Followed slice.json as source of truth rather than inferring list-scoping from the HTML_SCREEN mockup.
   - `specifications[]` and `storylines[]` were empty again — wrote a single happy-path DeciderSpecification test, consistent with the "Define list" precedent.
 ---
+
+## [2026-08-22] - Task Resolve Task
+
+- What was implemented: STATE_CHANGE slice "Resolve Task" (context "Todo List") — ResolveTask command and route emitting the already-declared TaskResolved event (added to TodoListEvents.ts ahead of time during the "Tasks" slice build, and TasksProjection already handled it by deleting the row).
+- Files changed:
+  - src/slices/todolist/resolvetask/ResolveTaskCommand.ts (new)
+  - src/slices/todolist/resolvetask/ResolveTask.test.ts (new)
+  - src/slices/todolist/resolvetask/routes.ts (new)
+  - .build-kit/.slices/Todo List/index.json (status -> Done)
+  - .build-kit/.slices/Todo List/resolvetask/slice.json (status -> Done)
+- Board sync: skipped — `.build-kit/.eventmodelers/config.json` absent (only install-manifest.json), per established pattern; status tracked locally only.
+- **Learnings for future iterations:** No new learnings — this slice confirmed prior AGENTS.md notes (empty specifications -> single happy-path test; no listId scoping; TaskResolved event/projection handling were already in place from the earlier "Tasks" slice).
+---
