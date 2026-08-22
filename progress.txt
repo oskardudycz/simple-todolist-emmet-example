@@ -4,6 +4,9 @@
 - Root project has its own `package.json`/`node_modules`, separate from `.build-kit/node_modules` — run `npm install` at repo root before `npm run build`/tests.
 - No `.git` repository existed at project start; initialized with `main` as the default branch and a `node_modules/`, `dist/`, `.env` entries added to `.gitignore` before the first commit.
 - `.build-kit/.eventmodelers/config.json` is absent in this project, so per the Ralph "Important" note, all platform/board communication (update-slice-status, MCP) is skipped — work stays local only.
+- `supabase/migrations/_V0__supabase_stubs.sql` is read unconditionally by `runFlywayMigrations()` but wasn't scaffolded — create it (minimal `CREATE EXTENSION IF NOT EXISTS pgcrypto;`) before the first state-view test runs, or every PostgreSQLProjectionSpec test fails with ENOENT.
+- The build-state-view skill's routes.ts template references a nonexistent `core/readmodel` helper — query the table directly via `getKnexInstance()` from `src/common/db.ts` instead.
+- Postgres-testcontainer tests need the Docker daemon actually running (not just `docker` CLI present) — `open -a Docker` then poll `docker info` if you see "Could not find a working container runtime strategy".
 
 ## [2026-08-22] - Task Define list
 
@@ -19,4 +22,20 @@
   - slice.json had empty `specifications[]` and no `storylines[]` — wrote a single happy-path DeciderSpecification test derived directly from the command/event field definitions since no business rule/idempotency constraint was specified anywhere (description/comments were empty), per the "don't invent business rules" rule in build-state-change skill.
   - The slice also carries an `HTML_SCREEN` node with a full localStorage-only demo page — that's UI-kit scope, not build-kit; build-state-change skill does not cover screens, so it was left untouched.
   - `test-analyzer` skill referenced in the Ralph instructions is not installed in `.claude/skills/` for this project — step was skipped as not actionable.
+---
+
+## [2026-08-22] - Task Todo Lists
+
+- What was implemented: STATE_VIEW slice "Todo Lists" (context "Todo List") — TodoListsProjection reacting to TodoListDefined (inbound event dependency on the readmodel, since slice.json's top-level events[] was empty), todo_lists table migration, and GET /api/query/todolists-collection route.
+- Files changed:
+  - supabase/migrations/_V0__supabase_stubs.sql (new — was missing, required by testHelpers.ts)
+  - supabase/migrations/V1__todo_lists.sql (new)
+  - src/slices/todolist/todolists/TodoListsProjection.ts (new)
+  - src/slices/todolist/todolists/TodoLists.test.ts (new)
+  - src/slices/todolist/todolists/routes.ts (new)
+  - src/common/loadPostgresEventstore.ts (registered TodoListsProjection)
+  - .build-kit/.slices/Todo List/index.json (status -> Done)
+  - .build-kit/.slices/Todo List/todolists/slice.json (status -> Done)
+  - .build-kit/AGENTS.md (learnings)
+- **Learnings for future iterations:** see Codebase Patterns section above (supabase stubs file, core/readmodel helper doesn't exist, Docker daemon must be running for testcontainers).
 ---
