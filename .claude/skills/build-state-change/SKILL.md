@@ -261,7 +261,7 @@ import {{SliceName}Command, handle{SliceName}} from './{SliceName}Command';
 
 export const api = (): WebApiSetup => (router: Router): void => {
 
-    router.post('/api/{slicename}/:id', async (req: Request, res: Response) => {
+    router.post('/api/{slicename}/:id', async (req: Request<{id: string}>, res: Response) => {
         const auth = await requireUser(req, res);
         if (auth.error) return;
 
@@ -310,6 +310,8 @@ const errorMapping = (code: string): string | null => {
     }
 };
 ```
+
+> **Route params on the `Request` generic**: Declare them as `Request<{id: string}>` — Express 5 types `ParamsDictionary` as `{[key: string]: string | string[]}`, so a bare `Request` makes `req.params.id` a `string | string[]`. Code that passes it on as a string will not compile.
 
 ---
 

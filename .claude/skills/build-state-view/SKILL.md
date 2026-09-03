@@ -73,7 +73,7 @@ File: `src/slices/{context}/{SliceName}/{SliceName}Projection.ts`
 
 ```typescript
 import {postgreSQLRawSQLProjection} from '@event-driven-io/emmett-postgresql';
-import {sql, SQL} from '@event-driven-io/dumbo';
+import {RawSQL, SQL} from '@event-driven-io/dumbo';
 import knex, {Knex} from 'knex';
 import {type {EventA}, type {EventB}} from '../{Context}Events';
 
@@ -100,7 +100,7 @@ export const {SliceName}Projection = postgreSQLRawSQLProjection<{SliceName}Event
             switch (event.type) {
                 case '{EventA}':
                     // Insert with upsert — use for create/update events
-                    return [sql(db(tableName)
+                    return [RawSQL`${db(tableName)
                         .withSchema('public')
                         .insert({
                             id:     event.data.id,
@@ -109,15 +109,15 @@ export const {SliceName}Projection = postgreSQLRawSQLProjection<{SliceName}Event
                         })
                         .onConflict('id')
                         .merge(['field1', 'field2'])
-                        .toQuery())];
+                        .toQuery()}`];
 
                 case '{EventB}':
                     // Delete — use for cancellation/removal events
-                    return [sql(db(tableName)
+                    return [RawSQL`${db(tableName)
                         .withSchema('public')
                         .where({id: event.data.id})
                         .delete()
-                        .toQuery())];
+                        .toQuery()}`];
 
                 default:
                     return [];
@@ -133,30 +133,30 @@ export const {SliceName}Projection = postgreSQLRawSQLProjection<{SliceName}Event
 
 **Insert with upsert (create or update):**
 ```typescript
-return [sql(db(tableName)
+return [RawSQL`${db(tableName)
     .withSchema('public')
     .insert({ id: event.data.id, field: event.data.field })
     .onConflict('id')
     .merge(['field'])   // list only columns to update on conflict
-    .toQuery())];
+    .toQuery()}`];
 ```
 
 **Update only (record already exists):**
 ```typescript
-return [sql(db(tableName)
+return [RawSQL`${db(tableName)
     .withSchema('public')
     .where({id: event.data.id})
     .update({field: event.data.field})
-    .toQuery())];
+    .toQuery()}`];
 ```
 
 **Delete:**
 ```typescript
-return [sql(db(tableName)
+return [RawSQL`${db(tableName)
     .withSchema('public')
     .where({id: event.data.id})
     .delete()
-    .toQuery())];
+    .toQuery()}`];
 ```
 
 **Async DB lookup before update** (when you need to read current state first):
@@ -170,12 +170,14 @@ const row = await db(tableName)
 if (!row) return [];
 
 const newValue = row.field + delta;
-return [sql(db(tableName)
+return [RawSQL`${db(tableName)
     .withSchema('public')
     .where({id: event.data.id})
     .update({field: newValue})
-    .toQuery())];
+    .toQuery()}`];
 ```
+
+`RawSQL` inlines whatever it interpolates verbatim — nothing is quoted, escaped or bound. That is correct here only because knex's `.toQuery()` already rendered the statement with its values escaped. When interpolating values directly rather than a finished knex query, use the `SQL` template tag instead — it binds interpolated values as query parameters.
 
 Always wrap in `try/finally` and call `db.destroy()` in the `finally` block.
 

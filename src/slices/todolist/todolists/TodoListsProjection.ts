@@ -1,5 +1,5 @@
 import {postgreSQLRawSQLProjection} from '@event-driven-io/emmett-postgresql';
-import {sql, SQL} from '@event-driven-io/dumbo';
+import {RawSQL, SQL} from '@event-driven-io/dumbo';
 import knex, {Knex} from 'knex';
 import type {TodoListDefined} from '../TodoListEvents';
 
@@ -24,7 +24,7 @@ export const TodoListsProjection = postgreSQLRawSQLProjection<TodoListsEvents>({
         try {
             switch (event.type) {
                 case 'TodoListDefined':
-                    return [sql(db(tableName)
+                    return [RawSQL`${db(tableName)
                         .withSchema('public')
                         .insert({
                             id: event.data.id,
@@ -32,7 +32,7 @@ export const TodoListsProjection = postgreSQLRawSQLProjection<TodoListsEvents>({
                         })
                         .onConflict('id')
                         .merge(['name'])
-                        .toQuery())];
+                        .toQuery()}`];
 
                 default:
                     return [];

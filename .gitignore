@@ -3,3 +3,5 @@
 node_modules/
 dist/
 .env
+flyway-13.5.0
+supabase/.temp

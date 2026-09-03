@@ -5,7 +5,7 @@ import {DefineListCommand, handleDefineList} from './DefineListCommand';
 
 export const api = (): WebApiSetup => (router: Router): void => {
 
-    router.post('/api/definelist/:id', async (req: Request, res: Response) => {
+    router.post('/api/definelist/:id', async (req: Request<{id: string}>, res: Response) => {
         const auth = await requireUser(req, res);
         if (auth.error) return;
 
