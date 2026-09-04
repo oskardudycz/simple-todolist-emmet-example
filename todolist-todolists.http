@@ -1,0 +1,21 @@
+@baseUrl = {{$dotenv API_URL}}
+@listId = 00000000-0000-4000-8000-000000000001
+
+### Authenticate
+# @name login
+POST {{$dotenv SUPABASE_URL}}/auth/v1/token?grant_type=password
+apikey: {{$dotenv SUPABASE_PUBLISHABLE_KEY}}
+Content-Type: application/json
+
+{
+  "email": "{{$dotenv SUPABASE_USER_EMAIL}}",
+  "password": "{{$dotenv SUPABASE_USER_PASSWORD}}"
+}
+
+### Get all todo lists
+GET {{baseUrl}}/api/query/todolists-collection
+Authorization: Bearer {{login.response.body.$.access_token}}
+
+### Get a todo list by ID
+GET {{baseUrl}}/api/query/todolists-collection?_id={{listId}}
+Authorization: Bearer {{login.response.body.$.access_token}}

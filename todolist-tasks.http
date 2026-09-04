@@ -1,0 +1,21 @@
+@baseUrl = {{$dotenv API_URL}}
+@taskId = 00000000-0000-4000-8000-000000000002
+
+### Authenticate
+# @name login
+POST {{$dotenv SUPABASE_URL}}/auth/v1/token?grant_type=password
+apikey: {{$dotenv SUPABASE_PUBLISHABLE_KEY}}
+Content-Type: application/json
+
+{
+  "email": "{{$dotenv SUPABASE_USER_EMAIL}}",
+  "password": "{{$dotenv SUPABASE_USER_PASSWORD}}"
+}
+
+### Get all tasks
+GET {{baseUrl}}/api/query/tasks-collection
+Authorization: Bearer {{login.response.body.$.access_token}}
+
+### Get a task by ID
+GET {{baseUrl}}/api/query/tasks-collection?_id={{taskId}}
+Authorization: Bearer {{login.response.body.$.access_token}}
