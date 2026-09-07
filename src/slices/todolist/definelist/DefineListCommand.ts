@@ -1,7 +1,7 @@
 import type {Command} from '@event-driven-io/emmett';
 import {CommandHandler} from '@event-driven-io/emmett';
+import type {PostgresEventStore} from '@event-driven-io/emmett-postgresql';
 import {type TodoListEvents} from '../TodoListEvents';
-import {findEventstore} from '../../../common/loadPostgresEventstore';
 
 export type DefineListCommand = Command<
     'DefineList',
@@ -49,8 +49,11 @@ const DefineListCommandHandler = CommandHandler<DefineListState, TodoListEvents>
     initialState: DefineListInitialState,
 });
 
-export const handleDefineList = async (id: string, command: DefineListCommand) => {
-    const eventStore = await findEventstore();
+export const handleDefineList = async (
+    eventStore: PostgresEventStore,
+    id: string,
+    command: DefineListCommand,
+) => {
     const result = await DefineListCommandHandler(eventStore, id, (state: DefineListState) =>
         decide(command, state),
     );

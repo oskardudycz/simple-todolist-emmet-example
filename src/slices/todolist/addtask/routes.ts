@@ -1,44 +1,41 @@
 import {Request, Response, Router} from 'express';
+import {assertNotEmptyString} from '@event-driven-io/emmett';
 import {WebApiSetup} from '@event-driven-io/emmett-expressjs';
+import type {PostgresEventStore} from '@event-driven-io/emmett-postgresql';
 import {requireUser} from '../../../supabase/requireUser';
-import {AddTaskCommand, handleAddTask} from './AddTaskCommand';
+import {SliceDeps} from '../../../common/deps';
+import {toTodoListStreamId} from '../TodoListEvents';
+import {handleAddTask} from './AddTaskCommand';
 
 export const api =
-    (): WebApiSetup =>
+    (eventStore: PostgresEventStore, deps: SliceDeps = {}): WebApiSetup =>
     (router: Router): void => {
         router.post('/api/addtask/:id', async (req: Request<{id: string}>, res: Response) => {
-            const auth = await requireUser(req, res);
+            const auth = await requireUser(req, res, deps.authenticate);
             if (auth.error) return;
 
-            const id = req.params.id;
+            const id = assertNotEmptyString(req.params.id);
             const correlationId = req.header('correlation_id') ?? id;
 
-            try {
-                const command: AddTaskCommand = {
-                    type: 'AddTask',
-                    data: {
-                        id,
-                        name: req.body.name,
-                    },
-                    metadata: {
-                        correlation_id: correlationId,
-                        causation_id: id,
-                    },
-                };
+            const result = await handleAddTask(eventStore, toTodoListStreamId(id), {
+                type: 'AddTask',
+                data: {
+                    id,
+                    name: assertNotEmptyString(req.body.name),
+                },
+                metadata: {
+                    correlation_id: correlationId,
+                    causation_id: id,
+                },
+            });
 
-                const result = await handleAddTask(id, command);
+            res.set('correlation_id', correlationId);
+            res.set('causation_id', id);
 
-                res.set('correlation_id', correlationId);
-                res.set('causation_id', id);
-
-                return res.status(201).json({
-                    ok: true,
-                    next_expected_stream_version: result.nextExpectedStreamVersion?.toString(),
-                    last_event_global_position: result.lastEventGlobalPosition?.toString(),
-                });
-            } catch (err) {
-                console.error(err);
-                return res.status(500).json({ok: false, error: 'Server error'});
-            }
+            return res.status(201).json({
+                ok: true,
+                next_expected_stream_version: result.nextExpectedStreamVersion?.toString(),
+                last_event_global_position: result.lastEventGlobalPosition?.toString(),
+            });
         });
     };

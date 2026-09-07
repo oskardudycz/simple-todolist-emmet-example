@@ -1,22 +1,20 @@
-import {
-    PostgreSQLProjectionDefinition,
-    rebuildPostgreSQLProjections,
-} from '@event-driven-io/emmett-postgresql';
+import {NotFoundError} from '@event-driven-io/emmett';
+import {rebuildPostgreSQLProjections} from '@event-driven-io/emmett-postgresql';
 import {postgresUrl} from './db';
-import {glob} from 'glob';
-import path from 'path';
+import {projectionRegistry} from '../slices/projections';
 
-const slicesRoot = path.resolve(__dirname, '../slices');
+export const replayProjection = async (
+    projectionName: string,
+    connectionString: string = postgresUrl,
+): Promise<void> => {
+    const projection = projectionRegistry[projectionName];
+    if (!projection) throw new NotFoundError({id: projectionName, type: 'Projection'});
 
-export const replayProjection = async (projectionName: string): Promise<void> => {
-    const [filePath] = await glob(`**/${projectionName}.{ts|js}`, {
-        cwd: slicesRoot,
-        absolute: true,
-    });
-    if (!filePath) throw new Error(`Projection not found: ${projectionName}`);
+    const consumer = rebuildPostgreSQLProjections({projection, connectionString});
 
-    const projectionImport = await import(filePath);
-    const projection: PostgreSQLProjectionDefinition = projectionImport[projectionName];
-
-    return rebuildPostgreSQLProjections({projection, connectionString: postgresUrl}).start();
+    try {
+        await consumer.start();
+    } finally {
+        await consumer.close();
+    }
 };

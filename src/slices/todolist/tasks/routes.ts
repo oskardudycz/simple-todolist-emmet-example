@@ -1,27 +1,28 @@
 import {Request, Response, Router} from 'express';
 import {WebApiSetup} from '@event-driven-io/emmett-expressjs';
+import type {PostgresEventStore} from '@event-driven-io/emmett-postgresql';
 import {requireUser} from '../../../supabase/requireUser';
-import {getKnexInstance} from '../../../common/db';
+import {getSharedPool} from '../../../common/db';
+import {sql} from '../../../common/sql';
+import {SliceDeps} from '../../../common/deps';
 import {TasksReadModel, tableName} from './TasksProjection';
 
 export const api =
-    (): WebApiSetup =>
+    (eventStore: PostgresEventStore, deps: SliceDeps = {}): WebApiSetup =>
     (router: Router): void => {
         router.get('/api/query/tasks-collection', async (req: Request, res: Response) => {
-            try {
-                const principal = await requireUser(req, res, true);
-                if (principal.error) return;
+            const principal = await requireUser(req, res, deps.authenticate);
+            if (principal.error) return;
 
-                const id = req.query._id?.toString();
-                const db = getKnexInstance();
+            const id = req.query._id?.toString();
 
-                const query = db<TasksReadModel>(tableName).withSchema('public');
-                const data = id ? await query.where({id}).first() : await query.select();
+            const builder = sql<TasksReadModel>(tableName).withSchema('public');
+            const query = id ? builder.where({id}).first() : builder.select();
 
-                return res.status(200).json(data ?? (id ? null : []));
-            } catch (err) {
-                console.error(err);
-                return res.status(500).json({ok: false, error: 'Server error'});
-            }
+            const {sql: text, bindings} = query.toSQL().toNative();
+            const pool = deps.pool ?? getSharedPool();
+            const {rows} = await pool.query<TasksReadModel>(text, bindings as unknown[]);
+
+            return res.status(200).json(id ? (rows[0] ?? null) : rows);
         });
     };

@@ -42,3 +42,5 @@ export type TaskDeleted = Event<
 >;
 
 export type TodoListEvents = TodoListDefined | TaskAdded | TaskResolved | TaskDeleted;
+
+export const toTodoListStreamId = (id: string): string => `todolist-${id}`;

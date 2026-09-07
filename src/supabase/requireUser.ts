@@ -2,7 +2,7 @@ import {createAuthenticatedClient} from './api';
 import type {User} from '@supabase/supabase-js';
 import {Request, Response} from 'express';
 
-type RequireUserResult =
+export type RequireUserResult =
     | {
           user: User;
           error: null;
@@ -11,6 +11,8 @@ type RequireUserResult =
           user: null;
           error: string;
       };
+
+export type Authenticate = (req: Request) => Promise<RequireUserResult>;
 
 /**
  * Extracts JWT token from Authorization header
@@ -34,20 +36,15 @@ function extractTokenFromHeader(req: Request): string | null {
 }
 
 /**
- * Verifies JWT token from Authorization header and returns user info
- * This is for backend API use - does not use cookies or redirects
+ * Resolves the caller from the Authorization header against Supabase.
+ * Never touches the response - the caller decides what to send.
  */
-export async function requireUser(
+export const supabaseAuthenticate: Authenticate = async (
     req: Request,
-    resp: Response,
-    sendUnauthorized: boolean = true,
-): Promise<RequireUserResult> {
+): Promise<RequireUserResult> => {
     const token = extractTokenFromHeader(req);
 
     if (!token) {
-        if (sendUnauthorized) {
-            resp.status(401).json({error: 'Missing authorization token'});
-        }
         return {
             user: null,
             error: 'MISSING_TOKEN',
@@ -63,9 +60,6 @@ export async function requireUser(
     } = await supabase.auth.getUser(token);
 
     if (error || !user) {
-        if (sendUnauthorized) {
-            resp.status(401).json({error: 'Invalid or expired token'});
-        }
         return {
             user: null,
             error: error?.message || 'UNAUTHORIZED',
@@ -76,4 +70,28 @@ export async function requireUser(
         user: user,
         error: null,
     };
+};
+
+/**
+ * Verifies JWT token from Authorization header and returns user info
+ * This is for backend API use - does not use cookies or redirects
+ */
+export async function requireUser(
+    req: Request,
+    resp: Response,
+    authenticate: Authenticate = supabaseAuthenticate,
+): Promise<RequireUserResult> {
+    const result = await authenticate(req);
+
+    if (result.error === 'MISSING_TOKEN') {
+        resp.status(401).json({error: 'Missing authorization token'});
+        return result;
+    }
+
+    if (result.error) {
+        resp.status(401).json({error: 'Invalid or expired token'});
+        return result;
+    }
+
+    return result;
 }

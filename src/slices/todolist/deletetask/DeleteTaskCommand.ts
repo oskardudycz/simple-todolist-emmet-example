@@ -1,7 +1,7 @@
 import type {Command} from '@event-driven-io/emmett';
 import {CommandHandler} from '@event-driven-io/emmett';
+import type {PostgresEventStore} from '@event-driven-io/emmett-postgresql';
 import {type TodoListEvents} from '../TodoListEvents';
-import {findEventstore} from '../../../common/loadPostgresEventstore';
 
 export type DeleteTaskCommand = Command<
     'DeleteTask',
@@ -47,8 +47,11 @@ const DeleteTaskCommandHandler = CommandHandler<DeleteTaskState, TodoListEvents>
     initialState: DeleteTaskInitialState,
 });
 
-export const handleDeleteTask = async (id: string, command: DeleteTaskCommand) => {
-    const eventStore = await findEventstore();
+export const handleDeleteTask = async (
+    eventStore: PostgresEventStore,
+    id: string,
+    command: DeleteTaskCommand,
+) => {
     const result = await DeleteTaskCommandHandler(eventStore, id, (state: DeleteTaskState) =>
         decide(command, state),
     );

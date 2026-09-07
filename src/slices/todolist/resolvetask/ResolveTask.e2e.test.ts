@@ -1,0 +1,61 @@
+import {before, describe, it} from 'node:test';
+import {ApiE2ESpecification, expectResponse} from '@event-driven-io/emmett-expressjs';
+import {E2EEnvironment, getE2EEnvironment} from '../../../testing/e2eEnvironment';
+
+describe('Resolve task E2E', () => {
+    let environment: E2EEnvironment;
+    let given: ApiE2ESpecification;
+    let token: string;
+
+    before(async () => {
+        environment = await getE2EEnvironment();
+
+        if (environment.available) {
+            const app = environment.app;
+            token = environment.token;
+            given = ApiE2ESpecification.for({getApplication: () => app});
+        }
+    });
+
+    it('resolves an added task', async (t) => {
+        if (!environment.available) return t.skip(environment.reason);
+        const id = `resolvetask-e2e-${Date.now()}`;
+
+        await given((request) =>
+            request
+                .post(`/api/addtask/${id}`)
+                .set('Authorization', `Bearer ${token}`)
+                .send({name: 'Milk'}),
+        )
+            .when((request) =>
+                request
+                    .post(`/api/resolvetask/${id}`)
+                    .set('Authorization', `Bearer ${token}`)
+                    .send({}),
+            )
+            .then([expectResponse(201, {body: {ok: true}})]);
+    });
+
+    it('resolves a task that was never added', async (t) => {
+        if (!environment.available) return t.skip(environment.reason);
+        const id = `resolvetask-e2e-missing-${Date.now()}`;
+
+        await given()
+            .when((request) =>
+                request
+                    .post(`/api/resolvetask/${id}`)
+                    .set('Authorization', `Bearer ${token}`)
+                    .send({}),
+            )
+            .then([expectResponse(201, {body: {ok: true}})]);
+    });
+
+    it('rejects a request without a token', async (t) => {
+        if (!environment.available) return t.skip(environment.reason);
+        const id = `resolvetask-e2e-anon-${Date.now()}`;
+
+        await given()
+            .when((request) => request.post(`/api/resolvetask/${id}`).send({}))
+            .then([expectResponse(401)]);
+    });
+});
