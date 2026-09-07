@@ -1,0 +1,37 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check Out Repo
+        uses: actions/checkout@v6
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      # Integration tests start Postgres and Flyway containers through testcontainers,
+      # which hosted runners provide out of the box. The e2e suite is not run here: it
+      # needs a real Supabase project, and skips itself when one is not configured.
+      - name: Integration tests
+        run: npm run test:int

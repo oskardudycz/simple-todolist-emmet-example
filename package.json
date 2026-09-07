@@ -28,6 +28,7 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "glob": "^13.0.6",
     "isomorphic-git": "^1.37.6",
     "jose": "^6.2.3",
     "knex": "^3.1.0",

@@ -1,20 +1,20 @@
 import {after, before, describe, it} from 'node:test';
 import type {PostgresEventStore} from '@event-driven-io/emmett-postgresql';
-import {
-    ApiSpecification,
-    existingStream,
-    expectError,
-    expectNewEvents,
-    expectResponse,
-    getApplication,
-} from '@event-driven-io/emmett-expressjs';
+import {ApiSpecification, expectError, getApplication} from '@event-driven-io/emmett-expressjs';
 import {
     PostgresTestDatabase,
     startPostgresTestDatabase,
 } from '../../../testing/postgresTestDatabase';
 import {createEventStore} from '../../../common/loadPostgresEventstore';
 import {allowAnyUser} from '../../../testing/stubAuth';
-import {TodoListEvents, toTodoListStreamId} from '../TodoListEvents';
+import {created, addTask, appended} from '../../../testing/todoListApi';
+import {
+    correlatedWith,
+    taskAdded,
+    todoList,
+    todoListDefined,
+} from '../../../testing/todoListEvents';
+import {TodoListEvents} from '../TodoListEvents';
 import {api} from './routes';
 
 describe('Add task Api Specification', () => {
@@ -30,7 +30,7 @@ describe('Add task Api Specification', () => {
             getEventStore: () => eventStore,
             getApplication: (es) =>
                 getApplication({
-                    apis: [api(es, {authenticate: allowAnyUser})],
+                    apis: [api({eventStore: es, authenticate: allowAnyUser})],
                     enableDefaultExpressEtag: true,
                 }),
         });
@@ -44,28 +44,11 @@ describe('Add task Api Specification', () => {
     it('adds a task to a defined list', async () => {
         const id = 'addtask-int-1';
 
-        await given(
-            existingStream(toTodoListStreamId(id), [
-                {
-                    type: 'TodoListDefined',
-                    data: {id, name: 'Groceries'},
-                    metadata: {},
-                },
-            ]),
-        )
-            .when((request) => request.post(`/api/addtask/${id}`).send({name: 'Buy milk'}))
+        await given(todoList(id, todoListDefined(id, 'Groceries')))
+            .when(addTask(id, {name: 'Buy milk'}))
             .then([
-                expectResponse(201, {
-                    body: {ok: true, next_expected_stream_version: '2'},
-                    headers: {correlation_id: id, causation_id: id},
-                }),
-                expectNewEvents(toTodoListStreamId(id), [
-                    {
-                        type: 'TaskAdded',
-                        data: {id, name: 'Buy milk'},
-                        metadata: {correlation_id: id, causation_id: id},
-                    },
-                ]),
+                created(2, {correlationId: id, causationId: id}),
+                appended(id, [taskAdded(id, 'Buy milk', correlatedWith(id))]),
             ]);
     });
 
@@ -73,16 +56,10 @@ describe('Add task Api Specification', () => {
         const id = 'addtask-int-2';
 
         await given()
-            .when((request) => request.post(`/api/addtask/${id}`).send({name: 'Buy milk'}))
+            .when(addTask(id, {name: 'Buy milk'}))
             .then([
-                expectResponse(201, {body: {ok: true, next_expected_stream_version: '1'}}),
-                expectNewEvents(toTodoListStreamId(id), [
-                    {
-                        type: 'TaskAdded',
-                        data: {id, name: 'Buy milk'},
-                        metadata: {correlation_id: id, causation_id: id},
-                    },
-                ]),
+                created(1, {correlationId: id, causationId: id}),
+                appended(id, [taskAdded(id, 'Buy milk', correlatedWith(id))]),
             ]);
     });
 
@@ -90,13 +67,7 @@ describe('Add task Api Specification', () => {
         const id = 'addtask-int-3';
 
         await given()
-            .when((request) => request.post(`/api/addtask/${id}`).send({}))
-            .then([
-                expectError(400, {
-                    status: 400,
-                    title: 'Bad Request',
-                    detail: 'NOT_A_NONEMPTY_STRING',
-                }),
-            ]);
+            .when(addTask(id, {}))
+            .then([expectError(400)]);
     });
 });

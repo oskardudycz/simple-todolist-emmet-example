@@ -1,87 +1,46 @@
-import assert from 'assert';
-import {before, describe, it} from 'node:test';
+import {before, describe} from 'node:test';
 import {ApiE2ESpecification, expectResponse} from '@event-driven-io/emmett-expressjs';
-import {E2EEnvironment, getE2EEnvironment} from '../../testing/e2eEnvironment';
+import {E2EEnvironment, getE2EEnvironment, scenarioRunner} from '../../testing/e2eEnvironment';
+import {authenticatedAs, get} from '../../testing/todoListApi';
 
 describe('Todo list flow E2E', () => {
     let environment: E2EEnvironment;
     let given: ApiE2ESpecification;
-    let token: string;
+    let api: ReturnType<typeof authenticatedAs>;
+
+    const scenario = scenarioRunner(() => environment);
 
     before(async () => {
         environment = await getE2EEnvironment();
 
         if (environment.available) {
             const app = environment.app;
-            token = environment.token;
+            api = authenticatedAs(environment.token);
             given = ApiE2ESpecification.for({getApplication: () => app});
         }
     });
 
-    it('defines a list, adds a task, resolves it', async (t) => {
-        if (!environment.available) return t.skip(environment.reason);
+    scenario('defines a list, adds a task, then resolves it', async () => {
         const id = `todolist-e2e-flow-${Date.now()}`;
 
-        await given(
-            (request) =>
-                request
-                    .post(`/api/definelist/${id}`)
-                    .set('Authorization', `Bearer ${token}`)
-                    .send({name: 'Groceries'}),
-            (request) =>
-                request
-                    .post(`/api/addtask/${id}`)
-                    .set('Authorization', `Bearer ${token}`)
-                    .send({name: 'Milk'}),
-        )
-            .when((request) =>
-                request
-                    .get(`/api/query/tasks-collection?_id=${id}`)
-                    .set('Authorization', `Bearer ${token}`),
-            )
+        await given(api.defineList(id, {name: 'Groceries'}), api.addTask(id, {name: 'Milk'}))
+            .when(api.getTask(id))
             .then([expectResponse(200, {body: {id, name: 'Milk'}})]);
 
-        await given((request) =>
-            request.post(`/api/resolvetask/${id}`).set('Authorization', `Bearer ${token}`).send({}),
-        )
-            .when((request) =>
-                request
-                    .get(`/api/query/tasks-collection?_id=${id}`)
-                    .set('Authorization', `Bearer ${token}`),
-            )
-            .then([
-                (response) => {
-                    assert.strictEqual(response.statusCode, 200);
-                    assert.strictEqual(response.body, null);
-                },
-            ]);
+        await given(api.resolveTask(id))
+            .when(api.getTask(id))
+            .then([expectResponse(200)]);
     });
 
-    it('serves the api docs without a token', async (t) => {
-        if (!environment.available) return t.skip(environment.reason);
-
+    scenario('serves the api docs without a token', async () => {
         await given()
-            .when((request) => request.get('/api-docs/'))
-            .then([
-                (response) => {
-                    assert.strictEqual(response.statusCode, 200);
-                },
-            ]);
+            .when(get('/api-docs/'))
+            .then([expectResponse(200)]);
     });
 
-    it('returns not found for an unknown route', async (t) => {
-        if (!environment.available) return t.skip(environment.reason);
-
+    scenario('returns not found for an unknown route', async () => {
         await given()
-            .when((request) =>
-                request
-                    .get('/api/query/there-is-no-such-route')
-                    .set('Authorization', `Bearer ${token}`),
-            )
-            .then([
-                (response) => {
-                    assert.strictEqual(response.statusCode, 404);
-                },
-            ]);
+            .when(api.get('/api/query/there-is-no-such-route'))
+            .then([expectResponse(404)]);
     });
 });

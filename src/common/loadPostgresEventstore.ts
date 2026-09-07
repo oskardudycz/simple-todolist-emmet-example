@@ -1,9 +1,10 @@
 import {getPostgreSQLEventStore, PostgresEventStore} from '@event-driven-io/emmett-postgresql';
 import {pgEventStoreDriver} from '@event-driven-io/emmett-postgresql/pg';
 import {projections} from '@event-driven-io/emmett';
-import pg from 'pg';
-import {postgresUrl, getSharedPool} from './db';
-import {projectionRegistry} from '../slices/projections';
+import type pg from 'pg';
+import {getPgPool, postgresUrl} from './db';
+import {TodoListsProjection} from '../slices/todolist/todolists/TodoListsProjection';
+import {TasksProjection} from '../slices/todolist/tasks/TasksProjection';
 
 let eventStoreInstance: PostgresEventStore | null = null;
 
@@ -18,7 +19,7 @@ export const createEventStore = async (
             autoMigration: 'CreateOrUpdate',
         },
         connectionOptions: pool ? {pooled: true, pool} : undefined,
-        projections: projections.inline(Object.values(projectionRegistry)),
+        projections: projections.inline([TodoListsProjection, TasksProjection]),
     });
 
     await eventStore.schema.migrate();
@@ -28,7 +29,7 @@ export const createEventStore = async (
 
 export const findEventstore = async (): Promise<PostgresEventStore> => {
     if (!eventStoreInstance) {
-        eventStoreInstance = await createEventStore(postgresUrl, getSharedPool());
+        eventStoreInstance = await createEventStore(postgresUrl, getPgPool(postgresUrl));
     }
     return eventStoreInstance;
 };

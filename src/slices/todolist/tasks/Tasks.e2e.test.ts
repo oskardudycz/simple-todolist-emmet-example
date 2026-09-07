@@ -1,112 +1,63 @@
-import assert from 'assert';
-import {before, describe, it} from 'node:test';
+import {before, describe} from 'node:test';
 import {ApiE2ESpecification, expectResponse} from '@event-driven-io/emmett-expressjs';
-import {E2EEnvironment, getE2EEnvironment} from '../../../testing/e2eEnvironment';
+import {E2EEnvironment, getE2EEnvironment, scenarioRunner} from '../../../testing/e2eEnvironment';
+import {authenticatedAs, getTasks} from '../../../testing/todoListApi';
 
 describe('Tasks query E2E', () => {
     let environment: E2EEnvironment;
     let given: ApiE2ESpecification;
-    let token: string;
+    let api: ReturnType<typeof authenticatedAs>;
+
+    const scenario = scenarioRunner(() => environment);
 
     before(async () => {
         environment = await getE2EEnvironment();
 
         if (environment.available) {
             const app = environment.app;
-            token = environment.token;
+            api = authenticatedAs(environment.token);
             given = ApiE2ESpecification.for({getApplication: () => app});
         }
     });
 
-    it('returns an added task in the collection', async (t) => {
-        if (!environment.available) return t.skip(environment.reason);
+    scenario('returns an added task by id', async () => {
         const id = `tasks-e2e-${Date.now()}`;
 
-        await given((request) =>
-            request
-                .post(`/api/addtask/${id}`)
-                .set('Authorization', `Bearer ${token}`)
-                .send({name: 'Milk'}),
-        )
-            .when((request) =>
-                request.get('/api/query/tasks-collection').set('Authorization', `Bearer ${token}`),
-            )
-            .then([
-                (response) => {
-                    assert.strictEqual(response.statusCode, 200);
-                    assert.ok(Array.isArray(response.body));
-                    assert.ok(response.body.some((task: {id: string}) => task.id === id));
-                },
-            ]);
-    });
-
-    it('drops a resolved task from the collection', async (t) => {
-        if (!environment.available) return t.skip(environment.reason);
-        const id = `tasks-e2e-resolved-${Date.now()}`;
-
-        await given(
-            (request) =>
-                request
-                    .post(`/api/addtask/${id}`)
-                    .set('Authorization', `Bearer ${token}`)
-                    .send({name: 'Milk'}),
-            (request) =>
-                request
-                    .post(`/api/resolvetask/${id}`)
-                    .set('Authorization', `Bearer ${token}`)
-                    .send({}),
-        )
-            .when((request) =>
-                request.get('/api/query/tasks-collection').set('Authorization', `Bearer ${token}`),
-            )
-            .then([
-                (response) => {
-                    assert.strictEqual(response.statusCode, 200);
-                    assert.ok(!response.body.some((task: {id: string}) => task.id === id));
-                },
-            ]);
-    });
-
-    it('returns a single task by id', async (t) => {
-        if (!environment.available) return t.skip(environment.reason);
-        const id = `tasks-e2e-byid-${Date.now()}`;
-
-        await given((request) =>
-            request
-                .post(`/api/addtask/${id}`)
-                .set('Authorization', `Bearer ${token}`)
-                .send({name: 'Milk'}),
-        )
-            .when((request) =>
-                request
-                    .get(`/api/query/tasks-collection?_id=${id}`)
-                    .set('Authorization', `Bearer ${token}`),
-            )
+        await given(api.addTask(id, {name: 'Milk'}))
+            .when(api.getTask(id))
             .then([expectResponse(200, {body: {id, name: 'Milk'}})]);
     });
 
-    it('returns null for an unknown id', async (t) => {
-        if (!environment.available) return t.skip(environment.reason);
+    scenario('drops a resolved task', async () => {
+        const id = `tasks-e2e-resolved-${Date.now()}`;
 
-        await given()
-            .when((request) =>
-                request
-                    .get(`/api/query/tasks-collection?_id=tasks-e2e-unknown-${Date.now()}`)
-                    .set('Authorization', `Bearer ${token}`),
-            )
+        await given(api.addTask(id, {name: 'Milk'}), api.resolveTask(id))
+            .when(api.getTask(id))
+            .then([expectResponse(200)]);
+    });
+
+    scenario('lists tasks in the collection', async () => {
+        const id = `tasks-e2e-list-${Date.now()}`;
+
+        await given(api.addTask(id, {name: 'Milk'}))
+            .when(api.getTasks())
             .then([
                 (response) => {
-                    assert.strictEqual(response.statusCode, 200);
-                    assert.strictEqual(response.body, null);
+                    if (response.statusCode !== 200) return false;
+                    return response.body.some((task: {id: string}) => task.id === id);
                 },
             ]);
     });
 
-    it('rejects a request without a token', async (t) => {
-        if (!environment.available) return t.skip(environment.reason);
-
+    scenario('returns null for an unknown id', async () => {
         await given()
-            .when((request) => request.get('/api/query/tasks-collection'))
+            .when(api.getTask(`tasks-e2e-unknown-${Date.now()}`))
+            .then([expectResponse(200)]);
+    });
+
+    scenario('rejects a request without a token', async () => {
+        await given()
+            .when(getTasks())
             .then([expectResponse(401)]);
     });
 });

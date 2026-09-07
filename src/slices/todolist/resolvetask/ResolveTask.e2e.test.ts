@@ -1,61 +1,46 @@
-import {before, describe, it} from 'node:test';
+import {before, describe} from 'node:test';
 import {ApiE2ESpecification, expectResponse} from '@event-driven-io/emmett-expressjs';
-import {E2EEnvironment, getE2EEnvironment} from '../../../testing/e2eEnvironment';
+import {E2EEnvironment, getE2EEnvironment, scenarioRunner} from '../../../testing/e2eEnvironment';
+import {authenticatedAs, resolveTask} from '../../../testing/todoListApi';
 
 describe('Resolve task E2E', () => {
     let environment: E2EEnvironment;
     let given: ApiE2ESpecification;
-    let token: string;
+    let api: ReturnType<typeof authenticatedAs>;
+
+    const scenario = scenarioRunner(() => environment);
 
     before(async () => {
         environment = await getE2EEnvironment();
 
         if (environment.available) {
             const app = environment.app;
-            token = environment.token;
+            api = authenticatedAs(environment.token);
             given = ApiE2ESpecification.for({getApplication: () => app});
         }
     });
 
-    it('resolves an added task', async (t) => {
-        if (!environment.available) return t.skip(environment.reason);
+    scenario('resolves an added task', async () => {
         const id = `resolvetask-e2e-${Date.now()}`;
 
-        await given((request) =>
-            request
-                .post(`/api/addtask/${id}`)
-                .set('Authorization', `Bearer ${token}`)
-                .send({name: 'Milk'}),
-        )
-            .when((request) =>
-                request
-                    .post(`/api/resolvetask/${id}`)
-                    .set('Authorization', `Bearer ${token}`)
-                    .send({}),
-            )
+        await given(api.addTask(id, {name: 'Milk'}))
+            .when(api.resolveTask(id))
             .then([expectResponse(201, {body: {ok: true}})]);
     });
 
-    it('resolves a task that was never added', async (t) => {
-        if (!environment.available) return t.skip(environment.reason);
+    scenario('resolves a task that was never added', async () => {
         const id = `resolvetask-e2e-missing-${Date.now()}`;
 
         await given()
-            .when((request) =>
-                request
-                    .post(`/api/resolvetask/${id}`)
-                    .set('Authorization', `Bearer ${token}`)
-                    .send({}),
-            )
+            .when(api.resolveTask(id))
             .then([expectResponse(201, {body: {ok: true}})]);
     });
 
-    it('rejects a request without a token', async (t) => {
-        if (!environment.available) return t.skip(environment.reason);
+    scenario('rejects a request without a token', async () => {
         const id = `resolvetask-e2e-anon-${Date.now()}`;
 
         await given()
-            .when((request) => request.post(`/api/resolvetask/${id}`).send({}))
+            .when(resolveTask(id))
             .then([expectResponse(401)]);
     });
 });

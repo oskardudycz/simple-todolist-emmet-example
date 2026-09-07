@@ -1,3 +1,4 @@
+import {it} from 'node:test';
 import type {Application} from 'express';
 import {createClient} from '@supabase/supabase-js';
 import {createApp} from '../../server';
@@ -74,3 +75,22 @@ const resolveE2EEnvironment = async (): Promise<E2EEnvironment> => {
 
     return {available: true, app: await createApp(), token: data.session.access_token};
 };
+
+/**
+ * `it` for a scenario that needs a reachable Supabase. Skipping in a `beforeEach` hook
+ * marks the test skipped but still runs its body, so the guard has to wrap the body.
+ */
+export const scenarioRunner =
+    (environment: () => E2EEnvironment) =>
+    (name: string, run: () => Promise<void>): void => {
+        it(name, async (t) => {
+            const resolvedEnvironment = environment();
+
+            if (!resolvedEnvironment.available) {
+                t.skip(resolvedEnvironment.reason);
+                return;
+            }
+
+            await run();
+        });
+    };

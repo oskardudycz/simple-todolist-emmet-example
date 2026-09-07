@@ -1,17 +1,16 @@
 import {Request, Response, Router} from 'express';
 import {assertNotEmptyString} from '@event-driven-io/emmett';
 import {WebApiSetup} from '@event-driven-io/emmett-expressjs';
-import type {PostgresEventStore} from '@event-driven-io/emmett-postgresql';
 import {requireUser} from '../../../supabase/requireUser';
-import {SliceDeps} from '../../../common/deps';
+import {CommandSliceDependencies} from '../../../common/dependencies';
 import {toTodoListStreamId} from '../TodoListEvents';
 import {handleDeleteTask} from './DeleteTaskCommand';
 
 export const api =
-    (eventStore: PostgresEventStore, deps: SliceDeps = {}): WebApiSetup =>
+    ({eventStore, authenticate}: CommandSliceDependencies): WebApiSetup =>
     (router: Router): void => {
         router.post('/api/deletetask/:id', async (req: Request<{id: string}>, res: Response) => {
-            const auth = await requireUser(req, res, deps.authenticate);
+            const auth = await requireUser(req, res, authenticate);
             if (auth.error) return;
 
             const id = assertNotEmptyString(req.params.id);

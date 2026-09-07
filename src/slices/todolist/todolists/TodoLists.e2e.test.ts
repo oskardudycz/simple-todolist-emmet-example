@@ -1,87 +1,55 @@
-import assert from 'assert';
-import {before, describe, it} from 'node:test';
+import {before, describe} from 'node:test';
 import {ApiE2ESpecification, expectResponse} from '@event-driven-io/emmett-expressjs';
-import {E2EEnvironment, getE2EEnvironment} from '../../../testing/e2eEnvironment';
+import {E2EEnvironment, getE2EEnvironment, scenarioRunner} from '../../../testing/e2eEnvironment';
+import {authenticatedAs, getTodoLists} from '../../../testing/todoListApi';
 
 describe('Todo lists query E2E', () => {
     let environment: E2EEnvironment;
     let given: ApiE2ESpecification;
-    let token: string;
+    let api: ReturnType<typeof authenticatedAs>;
+
+    const scenario = scenarioRunner(() => environment);
 
     before(async () => {
         environment = await getE2EEnvironment();
 
         if (environment.available) {
             const app = environment.app;
-            token = environment.token;
+            api = authenticatedAs(environment.token);
             given = ApiE2ESpecification.for({getApplication: () => app});
         }
     });
 
-    it('returns a defined list in the collection', async (t) => {
-        if (!environment.available) return t.skip(environment.reason);
+    scenario('returns a defined list by id', async () => {
         const id = `todolists-e2e-${Date.now()}`;
 
-        await given((request) =>
-            request
-                .post(`/api/definelist/${id}`)
-                .set('Authorization', `Bearer ${token}`)
-                .send({name: 'Groceries'}),
-        )
-            .when((request) =>
-                request
-                    .get('/api/query/todolists-collection')
-                    .set('Authorization', `Bearer ${token}`),
-            )
-            .then([
-                (response) => {
-                    assert.strictEqual(response.statusCode, 200);
-                    assert.ok(Array.isArray(response.body));
-                    assert.ok(response.body.some((list: {id: string}) => list.id === id));
-                },
-            ]);
-    });
-
-    it('returns a single list by id', async (t) => {
-        if (!environment.available) return t.skip(environment.reason);
-        const id = `todolists-e2e-byid-${Date.now()}`;
-
-        await given((request) =>
-            request
-                .post(`/api/definelist/${id}`)
-                .set('Authorization', `Bearer ${token}`)
-                .send({name: 'Groceries'}),
-        )
-            .when((request) =>
-                request
-                    .get(`/api/query/todolists-collection?_id=${id}`)
-                    .set('Authorization', `Bearer ${token}`),
-            )
+        await given(api.defineList(id, {name: 'Groceries'}))
+            .when(api.getTodoList(id))
             .then([expectResponse(200, {body: {id, name: 'Groceries'}})]);
     });
 
-    it('returns null for an unknown id', async (t) => {
-        if (!environment.available) return t.skip(environment.reason);
+    scenario('lists a defined list in the collection', async () => {
+        const id = `todolists-e2e-list-${Date.now()}`;
 
-        await given()
-            .when((request) =>
-                request
-                    .get(`/api/query/todolists-collection?_id=todolists-e2e-unknown-${Date.now()}`)
-                    .set('Authorization', `Bearer ${token}`),
-            )
+        await given(api.defineList(id, {name: 'Groceries'}))
+            .when(api.getTodoLists())
             .then([
                 (response) => {
-                    assert.strictEqual(response.statusCode, 200);
-                    assert.strictEqual(response.body, null);
+                    if (response.statusCode !== 200) return false;
+                    return response.body.some((list: {id: string}) => list.id === id);
                 },
             ]);
     });
 
-    it('rejects a request without a token', async (t) => {
-        if (!environment.available) return t.skip(environment.reason);
-
+    scenario('returns null for an unknown id', async () => {
         await given()
-            .when((request) => request.get('/api/query/todolists-collection'))
+            .when(api.getTodoList(`todolists-e2e-unknown-${Date.now()}`))
+            .then([expectResponse(200)]);
+    });
+
+    scenario('rejects a request without a token', async () => {
+        await given()
+            .when(getTodoLists())
             .then([expectResponse(401)]);
     });
 });

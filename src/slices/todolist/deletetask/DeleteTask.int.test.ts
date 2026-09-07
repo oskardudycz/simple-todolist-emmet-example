@@ -1,19 +1,15 @@
 import {after, before, describe, it} from 'node:test';
 import type {PostgresEventStore} from '@event-driven-io/emmett-postgresql';
-import {
-    ApiSpecification,
-    existingStream,
-    expectNewEvents,
-    expectResponse,
-    getApplication,
-} from '@event-driven-io/emmett-expressjs';
+import {ApiSpecification, getApplication} from '@event-driven-io/emmett-expressjs';
 import {
     PostgresTestDatabase,
     startPostgresTestDatabase,
 } from '../../../testing/postgresTestDatabase';
 import {createEventStore} from '../../../common/loadPostgresEventstore';
 import {allowAnyUser} from '../../../testing/stubAuth';
-import {TodoListEvents, toTodoListStreamId} from '../TodoListEvents';
+import {created, appended, deleteTask} from '../../../testing/todoListApi';
+import {correlatedWith, taskAdded, taskDeleted, todoList} from '../../../testing/todoListEvents';
+import {TodoListEvents} from '../TodoListEvents';
 import {api} from './routes';
 
 describe('Delete task Api Specification', () => {
@@ -29,7 +25,7 @@ describe('Delete task Api Specification', () => {
             getEventStore: () => eventStore,
             getApplication: (es) =>
                 getApplication({
-                    apis: [api(es, {authenticate: allowAnyUser})],
+                    apis: [api({eventStore: es, authenticate: allowAnyUser})],
                     enableDefaultExpressEtag: true,
                 }),
         });
@@ -43,66 +39,23 @@ describe('Delete task Api Specification', () => {
     it('deletes an added task', async () => {
         const id = 'deletetask-int-1';
 
-        await given(
-            existingStream(toTodoListStreamId(id), [
-                {
-                    type: 'TaskAdded',
-                    data: {id, name: 'Buy milk'},
-                    metadata: {},
-                },
-            ]),
-        )
-            .when((request) => request.post(`/api/deletetask/${id}`).send({}))
+        await given(todoList(id, taskAdded(id, 'Buy milk')))
+            .when(deleteTask(id))
             .then([
-                expectResponse(201, {
-                    body: {ok: true, next_expected_stream_version: '2'},
-                    headers: {correlation_id: id, causation_id: id},
-                }),
-                expectNewEvents(toTodoListStreamId(id), [
-                    {
-                        type: 'TaskDeleted',
-                        data: {id},
-                        metadata: {correlation_id: id, causation_id: id},
-                    },
-                ]),
+                created(2, {correlationId: id, causationId: id}),
+                appended(id, [taskDeleted(id, correlatedWith(id))]),
             ]);
     });
 
     it('deletes the same task twice', async () => {
         const id = 'deletetask-int-2';
 
-        await given(
-            existingStream(toTodoListStreamId(id), [
-                {
-                    type: 'TaskAdded',
-                    data: {id, name: 'Buy milk'},
-                    metadata: {},
-                },
-            ]),
-        )
-            .when((request) => request.post(`/api/deletetask/${id}`).send({}))
-            .then([
-                expectResponse(201, {body: {ok: true, next_expected_stream_version: '2'}}),
-                expectNewEvents(toTodoListStreamId(id), [
-                    {
-                        type: 'TaskDeleted',
-                        data: {id},
-                        metadata: {correlation_id: id, causation_id: id},
-                    },
-                ]),
-            ]);
+        await given(todoList(id, taskAdded(id, 'Buy milk')))
+            .when(deleteTask(id))
+            .then([created(2), appended(id, [taskDeleted(id, correlatedWith(id))])]);
 
         await given()
-            .when((request) => request.post(`/api/deletetask/${id}`).send({}))
-            .then([
-                expectResponse(201, {body: {ok: true, next_expected_stream_version: '3'}}),
-                expectNewEvents(toTodoListStreamId(id), [
-                    {
-                        type: 'TaskDeleted',
-                        data: {id},
-                        metadata: {correlation_id: id, causation_id: id},
-                    },
-                ]),
-            ]);
+            .when(deleteTask(id))
+            .then([created(3), appended(id, [taskDeleted(id, correlatedWith(id))])]);
     });
 });

@@ -1,61 +1,46 @@
-import {before, describe, it} from 'node:test';
+import {before, describe} from 'node:test';
 import {ApiE2ESpecification, expectResponse} from '@event-driven-io/emmett-expressjs';
-import {E2EEnvironment, getE2EEnvironment} from '../../../testing/e2eEnvironment';
+import {E2EEnvironment, getE2EEnvironment, scenarioRunner} from '../../../testing/e2eEnvironment';
+import {authenticatedAs, addTask} from '../../../testing/todoListApi';
 
 describe('Add task E2E', () => {
     let environment: E2EEnvironment;
     let given: ApiE2ESpecification;
-    let token: string;
+    let api: ReturnType<typeof authenticatedAs>;
+
+    const scenario = scenarioRunner(() => environment);
 
     before(async () => {
         environment = await getE2EEnvironment();
 
         if (environment.available) {
             const app = environment.app;
-            token = environment.token;
+            api = authenticatedAs(environment.token);
             given = ApiE2ESpecification.for({getApplication: () => app});
         }
     });
 
-    it('adds a task to a defined list', async (t) => {
-        if (!environment.available) return t.skip(environment.reason);
+    scenario('adds a task to a defined list', async () => {
         const id = `addtask-e2e-${Date.now()}`;
 
-        await given((request) =>
-            request
-                .post(`/api/definelist/${id}`)
-                .set('Authorization', `Bearer ${token}`)
-                .send({name: 'Groceries'}),
-        )
-            .when((request) =>
-                request
-                    .post(`/api/addtask/${id}`)
-                    .set('Authorization', `Bearer ${token}`)
-                    .send({name: 'Milk'}),
-            )
+        await given(api.defineList(id, {name: 'Groceries'}))
+            .when(api.addTask(id, {name: 'Milk'}))
             .then([expectResponse(201, {body: {ok: true}})]);
     });
 
-    it('adds a task without a list defined', async (t) => {
-        if (!environment.available) return t.skip(environment.reason);
+    scenario('adds a task without a list defined', async () => {
         const id = `addtask-e2e-nolist-${Date.now()}`;
 
         await given()
-            .when((request) =>
-                request
-                    .post(`/api/addtask/${id}`)
-                    .set('Authorization', `Bearer ${token}`)
-                    .send({name: 'Milk'}),
-            )
+            .when(api.addTask(id, {name: 'Milk'}))
             .then([expectResponse(201, {body: {ok: true}})]);
     });
 
-    it('rejects a request without a token', async (t) => {
-        if (!environment.available) return t.skip(environment.reason);
+    scenario('rejects a request without a token', async () => {
         const id = `addtask-e2e-anon-${Date.now()}`;
 
         await given()
-            .when((request) => request.post(`/api/addtask/${id}`).send({name: 'Milk'}))
+            .when(addTask(id, {name: 'Milk'}))
             .then([expectResponse(401)]);
     });
 });

@@ -1,15 +1,16 @@
+import {join} from 'path';
 import {configureApplication, startAPI, WebApiSetup} from '@event-driven-io/emmett-expressjs';
+import {glob} from 'glob';
 import express, {Application, Request, Response} from 'express';
 import {jsonReplacer} from './src/common/json';
 import {Authenticate, requireUser, supabaseAuthenticate} from './src/supabase/requireUser';
-import {closeDb} from './src/common/db';
+import {endPgPool, getPgPool, postgresUrl} from './src/common/db';
 import swaggerUi from 'swagger-ui-express';
 import {specs} from './src/swagger';
 import cors from 'cors';
 import {findEventstore} from './src/common/loadPostgresEventstore';
 import {PostgresEventStore} from '@event-driven-io/emmett-postgresql';
-import {processors, slices} from './src/slices';
-import {api as commonApi} from './src/common/routes';
+import {CommandSliceDependencies, QuerySliceDependencies} from './src/common/dependencies';
 
 export const createApp = async (options?: {
     eventStore?: PostgresEventStore;
@@ -17,26 +18,65 @@ export const createApp = async (options?: {
 }): Promise<Application> => {
     const eventStore = options?.eventStore ?? (await findEventstore());
     const authenticate = options?.authenticate ?? supabaseAuthenticate;
+    const pool = getPgPool(postgresUrl);
+
+    const slicesBase = join(__dirname, 'dist/src/slices');
+    const routesPattern = join(slicesBase, '**/routes{,-*}.js');
+
+    const routeFiles = await glob(routesPattern, {nodir: true});
+    console.log('Found route files:', routeFiles);
+
+    const processorPattern = join(slicesBase, '**/processor{,-*}.js');
+    const processorFiles = await glob(processorPattern, {nodir: true});
+    console.log('Found processor files:', processorFiles);
 
     // Common routes (e.g. projection replay) are privileged/operational and are
     // only mounted when explicitly enabled via env.
     const commonRoutesEnabled = process.env.COMMON_ROUTES_ENABLED === 'true';
+    const commonPattern = join(__dirname, 'src/common/routes{,-*}.@(ts|js)');
+    const commonRouteFiles = commonRoutesEnabled ? await glob(commonPattern, {nodir: true}) : [];
+    console.log(
+        commonRoutesEnabled
+            ? `Found common route files: ${commonRouteFiles}`
+            : 'Common routes disabled (set COMMON_ROUTES_ENABLED=true to enable)',
+    );
 
-    const webApis: WebApiSetup[] = slices.map((slice) => slice(eventStore, {authenticate}));
-    if (commonRoutesEnabled) webApis.push(commonApi());
+    const webApis: WebApiSetup[] = [];
+
+    for (const file of routeFiles.concat(commonRouteFiles)) {
+        const webApiModule: {
+            api: (dependencies: CommandSliceDependencies & QuerySliceDependencies) => WebApiSetup;
+        } = await import(file);
+        if (typeof webApiModule.api == 'function') {
+            webApis.push(webApiModule.api({eventStore, pool, authenticate}));
+        } else {
+            console.error(`Expected api function to be defined in ${file}`);
+        }
+    }
 
     const startedProcessors: Array<{stop: () => Promise<void>}> = [];
 
-    for (const processor of processors) {
-        processor.start(eventStore).catch((err) => console.error('Processor failed:', err));
-        startedProcessors.push(processor);
+    for (const processorFile of processorFiles) {
+        const processor: {
+            processor: {
+                start: (eventStore: PostgresEventStore) => Promise<void>;
+                stop: () => Promise<void>;
+            };
+        } = await import(processorFile);
+        if (typeof processor.processor.start == 'function') {
+            console.log(`starting processor ${processorFile}`);
+            processor.processor
+                .start(eventStore)
+                .catch((err) => console.error(`Processor ${processorFile} failed:`, err));
+            startedProcessors.push(processor.processor);
+        }
     }
 
     const shutdown = async (signal: string) => {
         console.log(`${signal} received, shutting down processors...`);
         await Promise.allSettled(startedProcessors.map((p) => p.stop()));
         await eventStore.close();
-        await closeDb();
+        await endPgPool({connectionString: postgresUrl});
         console.log('shutdown complete');
         process.exit(0);
     };

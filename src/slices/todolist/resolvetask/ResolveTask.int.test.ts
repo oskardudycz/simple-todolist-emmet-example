@@ -1,19 +1,15 @@
 import {after, before, describe, it} from 'node:test';
 import type {PostgresEventStore} from '@event-driven-io/emmett-postgresql';
-import {
-    ApiSpecification,
-    existingStream,
-    expectNewEvents,
-    expectResponse,
-    getApplication,
-} from '@event-driven-io/emmett-expressjs';
+import {ApiSpecification, getApplication} from '@event-driven-io/emmett-expressjs';
 import {
     PostgresTestDatabase,
     startPostgresTestDatabase,
 } from '../../../testing/postgresTestDatabase';
 import {createEventStore} from '../../../common/loadPostgresEventstore';
 import {allowAnyUser} from '../../../testing/stubAuth';
-import {TodoListEvents, toTodoListStreamId} from '../TodoListEvents';
+import {created, appended, resolveTask} from '../../../testing/todoListApi';
+import {correlatedWith, taskAdded, taskResolved, todoList} from '../../../testing/todoListEvents';
+import {TodoListEvents} from '../TodoListEvents';
 import {api} from './routes';
 
 describe('Resolve task Api Specification', () => {
@@ -29,7 +25,7 @@ describe('Resolve task Api Specification', () => {
             getEventStore: () => eventStore,
             getApplication: (es) =>
                 getApplication({
-                    apis: [api(es, {authenticate: allowAnyUser})],
+                    apis: [api({eventStore: es, authenticate: allowAnyUser})],
                     enableDefaultExpressEtag: true,
                 }),
         });
@@ -43,28 +39,11 @@ describe('Resolve task Api Specification', () => {
     it('resolves an added task', async () => {
         const id = 'resolvetask-int-1';
 
-        await given(
-            existingStream(toTodoListStreamId(id), [
-                {
-                    type: 'TaskAdded',
-                    data: {id, name: 'Buy milk'},
-                    metadata: {},
-                },
-            ]),
-        )
-            .when((request) => request.post(`/api/resolvetask/${id}`).send({}))
+        await given(todoList(id, taskAdded(id, 'Buy milk')))
+            .when(resolveTask(id))
             .then([
-                expectResponse(201, {
-                    body: {ok: true, next_expected_stream_version: '2'},
-                    headers: {correlation_id: id, causation_id: id},
-                }),
-                expectNewEvents(toTodoListStreamId(id), [
-                    {
-                        type: 'TaskResolved',
-                        data: {id},
-                        metadata: {correlation_id: id, causation_id: id},
-                    },
-                ]),
+                created(2, {correlationId: id, causationId: id}),
+                appended(id, [taskResolved(id, correlatedWith(id))]),
             ]);
     });
 
@@ -72,54 +51,19 @@ describe('Resolve task Api Specification', () => {
         const id = 'resolvetask-int-2';
 
         await given()
-            .when((request) => request.post(`/api/resolvetask/${id}`).send({}))
-            .then([
-                expectResponse(201, {body: {ok: true, next_expected_stream_version: '1'}}),
-                expectNewEvents(toTodoListStreamId(id), [
-                    {
-                        type: 'TaskResolved',
-                        data: {id},
-                        metadata: {correlation_id: id, causation_id: id},
-                    },
-                ]),
-            ]);
+            .when(resolveTask(id))
+            .then([created(1), appended(id, [taskResolved(id, correlatedWith(id))])]);
     });
 
     it('resolves the same task twice', async () => {
         const id = 'resolvetask-int-3';
 
-        await given(
-            existingStream(toTodoListStreamId(id), [
-                {
-                    type: 'TaskAdded',
-                    data: {id, name: 'Buy milk'},
-                    metadata: {},
-                },
-            ]),
-        )
-            .when((request) => request.post(`/api/resolvetask/${id}`).send({}))
-            .then([
-                expectResponse(201, {body: {ok: true, next_expected_stream_version: '2'}}),
-                expectNewEvents(toTodoListStreamId(id), [
-                    {
-                        type: 'TaskResolved',
-                        data: {id},
-                        metadata: {correlation_id: id, causation_id: id},
-                    },
-                ]),
-            ]);
+        await given(todoList(id, taskAdded(id, 'Buy milk')))
+            .when(resolveTask(id))
+            .then([created(2), appended(id, [taskResolved(id, correlatedWith(id))])]);
 
         await given()
-            .when((request) => request.post(`/api/resolvetask/${id}`).send({}))
-            .then([
-                expectResponse(201, {body: {ok: true, next_expected_stream_version: '3'}}),
-                expectNewEvents(toTodoListStreamId(id), [
-                    {
-                        type: 'TaskResolved',
-                        data: {id},
-                        metadata: {correlation_id: id, causation_id: id},
-                    },
-                ]),
-            ]);
+            .when(resolveTask(id))
+            .then([created(3), appended(id, [taskResolved(id, correlatedWith(id))])]);
     });
 });
