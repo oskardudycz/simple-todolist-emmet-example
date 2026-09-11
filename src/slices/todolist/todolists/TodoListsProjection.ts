@@ -19,7 +19,7 @@ export const TodoListsProjection = postgreSQLRawSQLProjection<TodoListsEvents>({
     name: 'TodoListsProjection',
     canHandle: ['TodoListDefined'],
     evolve: async (event, context): Promise<SQL[]> => {
-        const db = getKnexInstance(context.connection.connectionString);
+        const db = getKnexInstance(context.session.connectionOptions!.connectionString!);
 
         try {
             switch (event.type) {

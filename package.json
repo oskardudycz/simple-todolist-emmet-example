@@ -10,9 +10,9 @@
     "test": "tsx --test 'src/**/*.test.ts'"
   },
   "dependencies": {
-    "@event-driven-io/emmett": "^0.43.0-beta.42",
-    "@event-driven-io/emmett-expressjs": "^0.43.0-beta.42",
-    "@event-driven-io/emmett-postgresql": "^0.43.0-beta.42",
+    "@event-driven-io/emmett": "^0.43.0-beta.44",
+    "@event-driven-io/emmett-expressjs": "^0.43.0-beta.44",
+    "@event-driven-io/emmett-postgresql": "^0.43.0-beta.44",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@resvg/resvg-js": "^2.6.2",
     "@supabase/ssr": "^0.10.0",
