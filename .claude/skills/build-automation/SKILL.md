@@ -53,7 +53,7 @@ From the slice definition, extract:
 
 Follow the **build-state-change** skill to create:
 - `{SliceName}Command.ts` (Command type, evolve, decide, handle{SliceName})
-- `{SliceName}.test.ts` (DeciderSpecification tests)
+- `{SliceName}.unit.test.ts` (DeciderSpecification tests)
 
 **Do NOT create a `routes.ts`** for automations — the command is fired internally by the processor, not via HTTP.
 
@@ -87,12 +87,18 @@ File: `src/slices/{context}/{SliceName}/processor.ts`
 
 ```typescript
 import {type {TriggerEventName}} from '../{TriggerContext}Events';
+import {to{Context}StreamId} from '../{Context}Events';
 import {{SliceName}Command, handle{SliceName}} from './{SliceName}Command';
 import {PostgresEventStore, PostgreSQLEventStoreConsumer} from '@event-driven-io/emmett-postgresql';
+import {getPgPool, knexInstance, postgresUrl} from '../../../common/db';
 import {storeDlqMessage} from '../../../common/processorDlq';
 import {v4} from 'uuid';
 
 const PROCESSOR_ID = '{unique-kebab-case-processor-id}';
+
+// getPgPool returns the pool already opened for this connection string, so the DLQ writer
+// shares the event store's pool instead of opening a second one.
+const db = knexInstance(getPgPool(postgresUrl));
 
 let _consumer: PostgreSQLEventStoreConsumer<{TriggerEventName}> | null = null;
 
@@ -124,10 +130,10 @@ export const processor = {
                         },
                     };
 
-                    await handle{SliceName}(message.data.id, command);
+                    await handle{SliceName}(eventStore, to{Context}StreamId(message.data.id), command);
                 } catch (err) {
                     console.error(`${PROCESSOR_ID}: failed to process message`, message.data, err);
-                    await storeDlqMessage(PROCESSOR_ID, message, err);
+                    await storeDlqMessage(db, PROCESSOR_ID, message, err);
                 }
             },
         });
@@ -135,6 +141,8 @@ export const processor = {
         _consumer?.start().catch(err =>
             console.error(`${PROCESSOR_ID} consumer error:`, err),
         );
+
+        return _consumer;   // returned so tests can await whenStarted()/whenProcessed()
     },
 
     stop: async () => {
@@ -157,7 +165,60 @@ export const processor = {
 - `correlation_id` in the command → pass the trigger message's `id` (aggregate identifier)
 - `causation_id` in the command → pass the trigger message's `metadata?.correlation_id`
 
-**DLQ** — always wrap `eachMessage` in try/catch and call `storeDlqMessage` on failure. Failed messages are not retried automatically; the DLQ record allows manual reprocessing.
+**DLQ** — always wrap `eachMessage` in try/catch and call `storeDlqMessage(db, ...)` on failure. Failed messages are not retried automatically; the DLQ record allows manual reprocessing.
+
+### Testing the processor
+
+Step 2's command handler is unit-tested with `DeciderSpecification`, exactly as in **build-state-change**. Add `{SliceName}.int.test.ts` for the reactor itself: append the trigger event, let the processor run, assert the command fired.
+
+The consumer returned by `start` makes that deterministic — `whenStarted()` resolves once it is polling, and `whenProcessed(position)` resolves once every processor has handled up to an append's `lastEventGlobalPosition`. Never sleep or poll in these tests.
+
+```typescript
+import {after, before, describe, it} from 'node:test';
+import assert from 'assert';
+import type {PostgresEventStore} from '@event-driven-io/emmett-postgresql';
+import {PostgresTestDatabase, startPostgresTestDatabase} from '../../../testing/postgresTestDatabase';
+import {createEventStore} from '../../../common/loadPostgresEventstore';
+import {to{Context}StreamId} from '../{Context}Events';
+import {to{TriggerContext}StreamId} from '../{TriggerContext}Events';
+import {processor} from './processor';
+
+describe('{SliceName} Processor Specification', () => {
+    let database: PostgresTestDatabase;
+    let eventStore: PostgresEventStore;
+    let consumer: Awaited<ReturnType<typeof processor.start>>;
+
+    before(async () => {
+        database = await startPostgresTestDatabase();
+        eventStore = await createEventStore(database.connectionString);
+
+        consumer = await processor.start(eventStore);
+        await consumer.whenStarted();
+    });
+
+    after(async () => {
+        await processor.stop();
+        await eventStore?.close();
+        await database?.stop();
+    });
+
+    it('fires {SliceName} on {TriggerEventName}', async () => {
+        const id = '{slicename}-int-1';
+
+        const {lastEventGlobalPosition} = await eventStore.appendToStream(
+            to{TriggerContext}StreamId(id),
+            [{type: '{TriggerEventName}', data: {id}}],
+        );
+
+        await consumer.whenProcessed(lastEventGlobalPosition, {timeout: 10_000});
+
+        const stream = await eventStore.readStream(to{Context}StreamId(id));
+        assert.ok(stream.events.some((event) => event.type === '{EmittedEventName}'));
+    });
+});
+```
+
+An automation has no HTTP surface, so it gets no e2e test of its own — it is exercised end to end by the e2e test of the slice whose command emits the trigger event.
 
 ---
 
@@ -241,7 +302,8 @@ eachMessage: async (message) => {
 ```
 src/slices/{context}/{SliceName}/
 ├── {SliceName}Command.ts    ← command handler (decide/evolve/handle) — see build-state-change
-├── {SliceName}.test.ts      ← DeciderSpecification tests — see build-state-change
+├── {SliceName}.unit.test.ts ← DeciderSpecification tests — see build-state-change
+├── {SliceName}.int.test.ts  ← reactor test: append trigger, await whenProcessed, assert
 └── processor.ts             ← reactor (start/stop)
 
 src/
@@ -258,7 +320,11 @@ src/common/
 - [ ] `PROCESSOR_ID` is unique across all processors in the codebase (grep to verify)
 - [ ] `processorInstanceId` uses `v4()` — not a hardcoded string
 - [ ] `canHandle` matches the exact event type string from `{Context}Events.ts`
-- [ ] `eachMessage` is wrapped in try/catch with `storeDlqMessage` fallback
+- [ ] `eachMessage` is wrapped in try/catch with `storeDlqMessage(db, ...)` fallback
+- [ ] The command handler is called as `handle{SliceName}(eventStore, streamId, command)` — the
+      processor already has `eventStore` from `start`, it must not call `findEventstore()`
+- [ ] `start` returns the consumer, so the int test can await `whenStarted()`/`whenProcessed()`
+- [ ] `{SliceName}.int.test.ts` awaits `whenProcessed(lastEventGlobalPosition)` — no sleeps, no polling
 - [ ] Processor registered in application startup (start + stop)
 - [ ] `schema.migrate()` is called in `loadPostgresEventstore.ts`
 - [ ] No `routes.ts` created (automations are not exposed via HTTP)

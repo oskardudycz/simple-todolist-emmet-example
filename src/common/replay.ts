@@ -8,8 +8,11 @@ import path from 'path';
 
 const slicesRoot = path.resolve(__dirname, '../slices');
 
-export const replayProjection = async (projectionName: string): Promise<void> => {
-    const [filePath] = await glob(`**/${projectionName}.{ts|js}`, {
+export const replayProjection = async (
+    projectionName: string,
+    connectionString: string = postgresUrl,
+): Promise<void> => {
+    const [filePath] = await glob(`**/${projectionName}.{ts,js}`, {
         cwd: slicesRoot,
         absolute: true,
     });
@@ -18,5 +21,11 @@ export const replayProjection = async (projectionName: string): Promise<void> =>
     const projectionImport = await import(filePath);
     const projection: PostgreSQLProjectionDefinition = projectionImport[projectionName];
 
-    return rebuildPostgreSQLProjections({projection, connectionString: postgresUrl}).start();
+    const consumer = rebuildPostgreSQLProjections({projection, connectionString});
+
+    try {
+        await consumer.start();
+    } finally {
+        await consumer.close();
+    }
 };

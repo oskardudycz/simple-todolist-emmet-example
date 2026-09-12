@@ -1,6 +1,6 @@
 import {postgreSQLRawSQLProjection} from '@event-driven-io/emmett-postgresql';
-import {RawSQL, SQL} from '@event-driven-io/dumbo';
-import knex, {Knex} from 'knex';
+import type {SQL} from '@event-driven-io/dumbo';
+import {knexTable, sql} from '../../../common/db';
 import type {TodoListDefined} from '../TodoListEvents';
 
 export const tableName = 'todo_lists';
@@ -10,37 +10,30 @@ export type TodoListsReadModel = {
     name: string;
 };
 
-export const getKnexInstance = (connectionString: string): Knex =>
-    knex({client: 'pg', connection: connectionString, pool: {min: 0, max: 1}});
-
 type TodoListsEvents = TodoListDefined;
+
+const todoLists = () => knexTable<TodoListsReadModel>(tableName).withSchema('public');
 
 export const TodoListsProjection = postgreSQLRawSQLProjection<TodoListsEvents>({
     name: 'TodoListsProjection',
     canHandle: ['TodoListDefined'],
-    evolve: async (event, context): Promise<SQL[]> => {
-        const db = getKnexInstance(context.session.connectionOptions!.connectionString!);
-
-        try {
-            switch (event.type) {
-                case 'TodoListDefined':
-                    return [
-                        RawSQL`${db(tableName)
-                            .withSchema('public')
+    evolve: (event): SQL[] => {
+        switch (event.type) {
+            case 'TodoListDefined':
+                return [
+                    sql(
+                        todoLists()
                             .insert({
                                 id: event.data.id,
                                 name: event.data.name,
                             })
                             .onConflict('id')
-                            .merge(['name'])
-                            .toQuery()}`,
-                    ];
+                            .merge(['name']),
+                    ),
+                ];
 
-                default:
-                    return [];
-            }
-        } finally {
-            await db.destroy();
+            default:
+                return [];
         }
     },
 });

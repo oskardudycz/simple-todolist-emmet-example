@@ -1,6 +1,6 @@
 import {postgreSQLRawSQLProjection} from '@event-driven-io/emmett-postgresql';
-import {RawSQL, SQL} from '@event-driven-io/dumbo';
-import knex, {Knex} from 'knex';
+import type {SQL} from '@event-driven-io/dumbo';
+import {knexTable, sql} from '../../../common/db';
 import type {TaskAdded, TaskResolved} from '../TodoListEvents';
 
 export const tableName = 'tasks';
@@ -10,46 +10,33 @@ export type TasksReadModel = {
     name: string;
 };
 
-export const getKnexInstance = (connectionString: string): Knex =>
-    knex({client: 'pg', connection: connectionString, pool: {min: 0, max: 1}});
-
 type TasksEvents = TaskAdded | TaskResolved;
+
+const tasks = () => knexTable<TasksReadModel>(tableName).withSchema('public');
 
 export const TasksProjection = postgreSQLRawSQLProjection<TasksEvents>({
     name: 'TasksProjection',
     canHandle: ['TaskAdded', 'TaskResolved'],
-    evolve: async (event, context): Promise<SQL[]> => {
-        const db = getKnexInstance(context.session.connectionOptions!.connectionString!);
-
-        try {
-            switch (event.type) {
-                case 'TaskAdded':
-                    return [
-                        RawSQL`${db(tableName)
-                            .withSchema('public')
+    evolve: (event): SQL[] => {
+        switch (event.type) {
+            case 'TaskAdded':
+                return [
+                    sql(
+                        tasks()
                             .insert({
                                 id: event.data.id,
                                 name: event.data.name,
                             })
                             .onConflict('id')
-                            .merge(['name'])
-                            .toQuery()}`,
-                    ];
+                            .merge(['name']),
+                    ),
+                ];
 
-                case 'TaskResolved':
-                    return [
-                        RawSQL`${db(tableName)
-                            .withSchema('public')
-                            .where({id: event.data.id})
-                            .delete()
-                            .toQuery()}`,
-                    ];
+            case 'TaskResolved':
+                return [sql(tasks().where({id: event.data.id}).delete())];
 
-                default:
-                    return [];
-            }
-        } finally {
-            await db.destroy();
+            default:
+                return [];
         }
     },
 });

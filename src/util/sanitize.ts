@@ -14,10 +14,3 @@ function sanitizeValue(value: unknown): unknown {
 export function sanitize<T>(value: T): unknown {
     return sanitizeValue(value);
 }
-
-export const jsonBigIntReplacer = (_key: string, value: unknown): unknown =>
-    typeof value === 'bigint'
-        ? Number.isSafeInteger(Number(value))
-            ? Number(value)
-            : value.toString()
-        : value;

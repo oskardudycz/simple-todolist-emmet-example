@@ -2,17 +2,19 @@ import {join} from 'path';
 import {getApplication, startAPI, WebApiSetup} from '@event-driven-io/emmett-expressjs';
 import {glob} from 'glob';
 import express, {Application, Request, Response} from 'express';
-import {jsonBigIntReplacer} from './src/util/sanitize';
-import {requireUser} from './src/supabase/requireUser';
-import {closeDb} from './src/common/db';
+import {jsonReplacer} from './src/common/json';
+import {requireUser, supabaseAuthenticate} from './src/supabase/requireUser';
+import {endPgPool, getPgPool, knexInstance, postgresUrl} from './src/common/db';
 import swaggerUi from 'swagger-ui-express';
 import {specs} from './src/swagger';
 import cors from 'cors';
 import {findEventstore} from './src/common/loadPostgresEventstore';
 import {PostgresEventStore} from '@event-driven-io/emmett-postgresql';
+import {CommandSliceDependencies, QuerySliceDependencies} from './src/common/dependencies';
 
-async function startServer() {
+export const createApp = async (): Promise<Application> => {
     const eventStore = await findEventstore();
+    const db = knexInstance(getPgPool(postgresUrl));
     const slicesBase = join(__dirname, 'dist/src/slices');
     const routesPattern = join(slicesBase, '**/routes{,-*}.js');
 
@@ -35,7 +37,7 @@ async function startServer() {
     );
 
     const rootApp: Application = express();
-    rootApp.set('json replacer', jsonBigIntReplacer);
+    rootApp.set('json replacer', jsonReplacer);
 
     const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((o) => o.trim()) ?? [
         'http://localhost:3000',
@@ -61,9 +63,11 @@ async function startServer() {
     const webApis: WebApiSetup[] = [];
 
     for (const file of routeFiles.concat(commonRouteFiles)) {
-        const webApiModule: {api: () => WebApiSetup} = await import(file);
+        const webApiModule: {
+            api: (dependencies: CommandSliceDependencies & QuerySliceDependencies) => WebApiSetup;
+        } = await import(file);
         if (typeof webApiModule.api == 'function') {
-            const module = webApiModule.api();
+            const module = webApiModule.api({eventStore, db, authenticate: supabaseAuthenticate});
             webApis.push(module);
         } else {
             console.error(`Expected api function to be defined in ${file}`);
@@ -92,7 +96,8 @@ async function startServer() {
         console.log(`${signal} received, shutting down processors...`);
         await Promise.allSettled(startedProcessors.map((p) => p.stop()));
         await eventStore.close();
-        await closeDb();
+        await db.destroy();
+        await endPgPool({connectionString: postgresUrl});
         console.log('shutdown complete');
         process.exit(0);
     };
@@ -106,15 +111,15 @@ async function startServer() {
         disableJsonMiddleware: false,
         enableDefaultExpressEtag: true,
     });
-    childApp.set('json replacer', jsonBigIntReplacer);
+    childApp.set('json replacer', jsonReplacer);
 
     // Protected user info endpoint - requires JWT token in Authorization header
     childApp.get('/api/user', async (req: Request, res: Response) => {
         console.log('API user route hit'); // Debug log
         try {
-            const result = await requireUser(req, res, false);
+            const result = await supabaseAuthenticate(req);
             if (result.error !== null) {
-                // Response already sent by requireUser if sendUnauthorized=true
+                // supabaseAuthenticate never touches the response
                 if (!res.headersSent) {
                     res.status(401).json({error: result.error});
                 }
@@ -155,9 +160,6 @@ async function startServer() {
         res.send(specs);
     });
 
-    const port = parseInt(process.env.PORT || '3000', 10);
-    console.log(`> Ready on port ${port}`);
-
     rootApp.use((req: Request, _res: Response, next) => {
         console.log(`[${req.method}] ${req.path}`);
         next();
@@ -181,8 +183,6 @@ async function startServer() {
     });
 
     rootApp.use(childApp);
-    // Start the main application
-    startAPI(rootApp, {port: port});
 
     process.on('unhandledRejection', (reason, promise) => {
         console.error('⛔ Unhandled Rejection:', reason);
@@ -190,9 +190,21 @@ async function startServer() {
             console.error('Stack trace:\n', reason.stack);
         }
     });
-}
 
-startServer().catch((error) => {
-    console.error('Failed to start server:', error);
-    process.exit(1);
-});
+    return rootApp;
+};
+
+const startServer = async () => {
+    const port = parseInt(process.env.PORT || '3000', 10);
+    console.log(`> Ready on port ${port}`);
+
+    // Start the main application
+    startAPI(await createApp(), {port: port});
+};
+
+if (require.main === module) {
+    startServer().catch((error) => {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    });
+}
