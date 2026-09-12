@@ -11,6 +11,12 @@
 
   "typescript.preferences.importModuleSpecifier": "relative",
 
+  "rest-client.environmentVariables": {
+    "$shared": {
+      "baseUrl": "http://localhost:3000"
+    }
+  },
+
   "nodejs-testing.include": ["./**/**"],
   "nodejs-testing.extensions": [
     {
