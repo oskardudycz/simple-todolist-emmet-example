@@ -6,6 +6,7 @@
     "flyway:migrate": "dotenv -e .env -- flyway -baselineOnMigrate=true migrate",
     "dev": "node --env-file=.env --require ts-node/register server.ts",
     "build": "tsc",
+    "build:watch": "tsc --watch",
     "start": "NODE_ENV=production node --env-file=.env --require ts-node/register server.ts",
     "test": "tsx --test 'src/**/*.test.ts'"
   },
