@@ -1,13 +1,15 @@
 import {Response} from 'express';
 import {SupabaseClient} from '@supabase/supabase-js';
 
-type RequireOrgaAdminResult = {
-    ok: true;
-    error: null;
-} | {
-    ok: false;
-    error: string;
-};
+type RequireOrgaAdminResult =
+    | {
+          ok: true;
+          error: null;
+      }
+    | {
+          ok: false;
+          error: string;
+      };
 
 export async function requireOrgaAdmin(
     supabase: SupabaseClient,

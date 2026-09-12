@@ -24,15 +24,17 @@ export const TodoListsProjection = postgreSQLRawSQLProjection<TodoListsEvents>({
         try {
             switch (event.type) {
                 case 'TodoListDefined':
-                    return [RawSQL`${db(tableName)
-                        .withSchema('public')
-                        .insert({
-                            id: event.data.id,
-                            name: event.data.name,
-                        })
-                        .onConflict('id')
-                        .merge(['name'])
-                        .toQuery()}`];
+                    return [
+                        RawSQL`${db(tableName)
+                            .withSchema('public')
+                            .insert({
+                                id: event.data.id,
+                                name: event.data.name,
+                            })
+                            .onConflict('id')
+                            .merge(['name'])
+                            .toQuery()}`,
+                    ];
 
                 default:
                     return [];

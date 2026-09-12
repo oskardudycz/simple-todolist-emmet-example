@@ -1,13 +1,16 @@
-import {createAuthenticatedClient} from "./api";
-import {Request, Response} from "express"
+import {createAuthenticatedClient} from './api';
+import type {User} from '@supabase/supabase-js';
+import {Request, Response} from 'express';
 
-type RequireUserResult = {
-    user: any;
-    error: null;
-} | {
-    user: null;
-    error: string;
-};
+type RequireUserResult =
+    | {
+          user: User;
+          error: null;
+      }
+    | {
+          user: null;
+          error: string;
+      };
 
 /**
  * Extracts JWT token from Authorization header
@@ -34,7 +37,11 @@ function extractTokenFromHeader(req: Request): string | null {
  * Verifies JWT token from Authorization header and returns user info
  * This is for backend API use - does not use cookies or redirects
  */
-export async function requireUser(req: Request, resp: Response, sendUnauthorized: boolean = true): Promise<RequireUserResult> {
+export async function requireUser(
+    req: Request,
+    resp: Response,
+    sendUnauthorized: boolean = true,
+): Promise<RequireUserResult> {
     const token = extractTokenFromHeader(req);
 
     if (!token) {
@@ -52,7 +59,7 @@ export async function requireUser(req: Request, resp: Response, sendUnauthorized
     // Verify the JWT token
     const {
         data: {user},
-        error
+        error,
     } = await supabase.auth.getUser(token);
 
     if (error || !user) {
@@ -67,6 +74,6 @@ export async function requireUser(req: Request, resp: Response, sendUnauthorized
 
     return {
         user: user,
-        error: null
-    }
+        error: null,
+    };
 }

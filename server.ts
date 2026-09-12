@@ -1,19 +1,18 @@
 import {join} from 'path';
 import {getApplication, startAPI, WebApiSetup} from '@event-driven-io/emmett-expressjs';
-import {glob} from "glob";
+import {glob} from 'glob';
 import express, {Application, Request, Response} from 'express';
 import {jsonBigIntReplacer} from './src/util/sanitize';
-import {requireUser} from "./src/supabase/requireUser";
-import {getKnexInstance, closeDb} from "./src/common/db";
-import swaggerUi from 'swagger-ui-express'
+import {requireUser} from './src/supabase/requireUser';
+import {closeDb} from './src/common/db';
+import swaggerUi from 'swagger-ui-express';
 import {specs} from './src/swagger';
 import cors from 'cors';
-import {findEventstore} from "./src/common/loadPostgresEventstore";
-import {PostgresEventStore} from "@event-driven-io/emmett-postgresql";
+import {findEventstore} from './src/common/loadPostgresEventstore';
+import {PostgresEventStore} from '@event-driven-io/emmett-postgresql';
 
 async function startServer() {
-
-    const eventStore = await findEventstore()
+    const eventStore = await findEventstore();
     const slicesBase = join(__dirname, 'dist/src/slices');
     const routesPattern = join(slicesBase, '**/routes{,-*}.js');
 
@@ -28,51 +27,70 @@ async function startServer() {
     // only mounted when explicitly enabled via env.
     const commonRoutesEnabled = process.env.COMMON_ROUTES_ENABLED === 'true';
     const commonPattern = join(__dirname, 'src/common/routes{,-*}.@(ts|js)');
-    const commonRouteFiles = commonRoutesEnabled
-        ? await glob(commonPattern, {nodir: true})
-        : [];
-    console.log(commonRoutesEnabled
-        ? `Found common route files: ${commonRouteFiles}`
-        : 'Common routes disabled (set COMMON_ROUTES_ENABLED=true to enable)');
-
+    const commonRouteFiles = commonRoutesEnabled ? await glob(commonPattern, {nodir: true}) : [];
+    console.log(
+        commonRoutesEnabled
+            ? `Found common route files: ${commonRouteFiles}`
+            : 'Common routes disabled (set COMMON_ROUTES_ENABLED=true to enable)',
+    );
 
     const rootApp: Application = express();
     rootApp.set('json replacer', jsonBigIntReplacer);
 
-    const corsOrigins = process.env.CORS_ORIGINS?.split(',').map(o => o.trim()) ?? ['http://localhost:3000', 'http://localhost:3001'];
-    rootApp.use(cors({
-        origin: corsOrigins,
-        credentials: true,
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Content-Encoding',  'accept-encoding', 'Authorization','x-user-id','x-causation-id','x-correlation-id']
-    }));
+    const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((o) => o.trim()) ?? [
+        'http://localhost:3000',
+        'http://localhost:3001',
+    ];
+    rootApp.use(
+        cors({
+            origin: corsOrigins,
+            credentials: true,
+            methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+            allowedHeaders: [
+                'Content-Type',
+                'Content-Encoding',
+                'accept-encoding',
+                'Authorization',
+                'x-user-id',
+                'x-causation-id',
+                'x-correlation-id',
+            ],
+        }),
+    );
 
     const webApis: WebApiSetup[] = [];
 
     for (const file of routeFiles.concat(commonRouteFiles)) {
-        const webApiModule: { api: () => WebApiSetup } = await import(file);
+        const webApiModule: {api: () => WebApiSetup} = await import(file);
         if (typeof webApiModule.api == 'function') {
-            var module = webApiModule.api()
+            const module = webApiModule.api();
             webApis.push(module);
         } else {
             console.error(`Expected api function to be defined in ${file}`);
         }
     }
 
-    const startedProcessors: Array<{ stop: () => Promise<void> }> = [];
+    const startedProcessors: Array<{stop: () => Promise<void>}> = [];
 
     for (const processorFile of processorFiles) {
-        const processor: { processor: { start: (eventStore: PostgresEventStore) => Promise<void>; stop: () => Promise<void> } } = await import(processorFile);
-        if (typeof processor.processor.start == "function") {
-            console.log(`starting processor ${processorFile}`)
-            processor.processor.start(eventStore).catch(err => console.error(`Processor ${processorFile} failed:`, err));
+        const processor: {
+            processor: {
+                start: (eventStore: PostgresEventStore) => Promise<void>;
+                stop: () => Promise<void>;
+            };
+        } = await import(processorFile);
+        if (typeof processor.processor.start == 'function') {
+            console.log(`starting processor ${processorFile}`);
+            processor.processor
+                .start(eventStore)
+                .catch((err) => console.error(`Processor ${processorFile} failed:`, err));
             startedProcessors.push(processor.processor);
         }
     }
 
     const shutdown = async (signal: string) => {
         console.log(`${signal} received, shutting down processors...`);
-        await Promise.allSettled(startedProcessors.map(p => p.stop()));
+        await Promise.allSettled(startedProcessors.map((p) => p.stop()));
         await eventStore.close();
         await closeDb();
         console.log('shutdown complete');
@@ -94,18 +112,18 @@ async function startServer() {
     childApp.get('/api/user', async (req: Request, res: Response) => {
         console.log('API user route hit'); // Debug log
         try {
-            const result = await requireUser(req, res, false)
-            if (result.error) {
+            const result = await requireUser(req, res, false);
+            if (result.error !== null) {
                 // Response already sent by requireUser if sendUnauthorized=true
                 if (!res.headersSent) {
-                    res.status(401).json({error: result.error})
+                    res.status(401).json({error: result.error});
                 }
             } else {
                 res.status(200).json({
                     user_id: result.user.id,
                     email: result.user.email,
-                    metadata: result.user.user_metadata
-                })
+                    metadata: result.user.user_metadata,
+                });
             }
         } catch (error) {
             console.error('Error in /api/user:', error);
@@ -117,16 +135,19 @@ async function startServer() {
 
     // Swagger UI endpoints
     childApp.use('/api-docs', swaggerUi.serve);
-    childApp.get('/api-docs', swaggerUi.setup(specs, {
-        swaggerOptions: {
-            urls: [
-                {
-                    url: '/swagger.json',
-                    name: 'JSON',
-                },
-            ],
-        },
-    }));
+    childApp.get(
+        '/api-docs',
+        swaggerUi.setup(specs, {
+            swaggerOptions: {
+                urls: [
+                    {
+                        url: '/swagger.json',
+                        name: 'JSON',
+                    },
+                ],
+            },
+        }),
+    );
 
     // OpenAPI spec endpoint
     childApp.get('/swagger.json', (req: Request, res: Response) => {
@@ -149,17 +170,17 @@ async function startServer() {
     // routes are protected even if a handler forgets to call requireUser.
     const PUBLIC_PATHS = ['/api-docs', '/swagger.json', '/health'];
     const isPublicPath = (p: string): boolean =>
-        PUBLIC_PATHS.some(pub => p === pub || p.startsWith(pub + '/'));
+        PUBLIC_PATHS.some((pub) => p === pub || p.startsWith(pub + '/'));
 
     rootApp.use(async (req: Request, res: Response, next) => {
-        if (req.method === 'OPTIONS') return next();      // CORS preflight
-        if (isPublicPath(req.path)) return next();        // docs / health
-        const {error} = await requireUser(req, res);      // sends 401 on failure
-        if (error) return;                                // response already sent
+        if (req.method === 'OPTIONS') return next(); // CORS preflight
+        if (isPublicPath(req.path)) return next(); // docs / health
+        const {error} = await requireUser(req, res); // sends 401 on failure
+        if (error) return; // response already sent
         next();
     });
 
-    rootApp.use(childApp)
+    rootApp.use(childApp);
     // Start the main application
     startAPI(rootApp, {port: port});
 
@@ -171,7 +192,7 @@ async function startServer() {
     });
 }
 
-startServer().catch(error => {
+startServer().catch((error) => {
     console.error('Failed to start server:', error);
     process.exit(1);
 });

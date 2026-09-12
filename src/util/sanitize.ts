@@ -6,9 +6,7 @@ function sanitizeValue(value: unknown): unknown {
         return value.map(sanitizeValue);
     }
     if (value !== null && typeof value === 'object') {
-        return Object.fromEntries(
-            Object.entries(value).map(([k, v]) => [k, sanitizeValue(v)])
-        );
+        return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, sanitizeValue(v)]));
     }
     return value;
 }
@@ -19,5 +17,7 @@ export function sanitize<T>(value: T): unknown {
 
 export const jsonBigIntReplacer = (_key: string, value: unknown): unknown =>
     typeof value === 'bigint'
-        ? (Number.isSafeInteger(Number(value)) ? Number(value) : value.toString())
+        ? Number.isSafeInteger(Number(value))
+            ? Number(value)
+            : value.toString()
         : value;

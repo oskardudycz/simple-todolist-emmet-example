@@ -1,5 +1,9 @@
 import {before, after, describe, it} from 'node:test';
-import {PostgreSQLProjectionAssert, PostgreSQLProjectionSpec} from '@event-driven-io/emmett-postgresql';
+import type {TodoListDefined} from '../TodoListEvents';
+import {
+    PostgreSQLProjectionAssert,
+    PostgreSQLProjectionSpec,
+} from '@event-driven-io/emmett-postgresql';
 import {TodoListsProjection, tableName} from './TodoListsProjection';
 import {PostgreSqlContainer, StartedPostgreSqlContainer} from '@testcontainers/postgresql';
 import knex, {Knex} from 'knex';
@@ -12,7 +16,7 @@ describe('Todo Lists Specification', () => {
     let postgres: StartedPostgreSqlContainer;
     let connectionString: string;
     let db: Knex;
-    let given: PostgreSQLProjectionSpec<any>;
+    let given: PostgreSQLProjectionSpec<TodoListDefined>;
 
     before(async () => {
         postgres = await new PostgreSqlContainer('postgres').start();
@@ -50,11 +54,13 @@ describe('Todo Lists Specification', () => {
             }
         };
 
-        await given([{
-            type: 'TodoListDefined',
-            data: {id: TEST_ID, name: 'Work'},
-            metadata: {stream_name: `todolist-${TEST_ID}`},
-        }])
+        await given([
+            {
+                type: 'TodoListDefined',
+                data: {id: TEST_ID, name: 'Work'},
+                metadata: {stream_name: `todolist-${TEST_ID}`},
+            },
+        ])
             .when([])
             .then(assertReadModel);
     });

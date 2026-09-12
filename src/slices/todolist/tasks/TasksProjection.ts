@@ -24,22 +24,26 @@ export const TasksProjection = postgreSQLRawSQLProjection<TasksEvents>({
         try {
             switch (event.type) {
                 case 'TaskAdded':
-                    return [RawSQL`${db(tableName)
-                        .withSchema('public')
-                        .insert({
-                            id: event.data.id,
-                            name: event.data.name,
-                        })
-                        .onConflict('id')
-                        .merge(['name'])
-                        .toQuery()}`];
+                    return [
+                        RawSQL`${db(tableName)
+                            .withSchema('public')
+                            .insert({
+                                id: event.data.id,
+                                name: event.data.name,
+                            })
+                            .onConflict('id')
+                            .merge(['name'])
+                            .toQuery()}`,
+                    ];
 
                 case 'TaskResolved':
-                    return [RawSQL`${db(tableName)
-                        .withSchema('public')
-                        .where({id: event.data.id})
-                        .delete()
-                        .toQuery()}`];
+                    return [
+                        RawSQL`${db(tableName)
+                            .withSchema('public')
+                            .where({id: event.data.id})
+                            .delete()
+                            .toQuery()}`,
+                    ];
 
                 default:
                     return [];

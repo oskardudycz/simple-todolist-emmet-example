@@ -1,10 +1,5 @@
 import {DeciderSpecification} from '@event-driven-io/emmett';
-import {
-    AddTaskCommand,
-    AddTaskInitialState,
-    decide,
-    evolve,
-} from './AddTaskCommand';
+import {AddTaskCommand, AddTaskInitialState, decide, evolve} from './AddTaskCommand';
 import {describe, it} from 'node:test';
 
 describe('Add task Specification', () => {
@@ -26,13 +21,15 @@ describe('Add task Specification', () => {
 
         given([])
             .when(command)
-            .then([{
-                type: 'TaskAdded',
-                data: {
-                    id: 'task-1',
-                    name: 'Buy groceries',
+            .then([
+                {
+                    type: 'TaskAdded',
+                    data: {
+                        id: 'task-1',
+                        name: 'Buy groceries',
+                    },
+                    metadata: {},
                 },
-                metadata: {},
-            }]);
+            ]);
     });
 });

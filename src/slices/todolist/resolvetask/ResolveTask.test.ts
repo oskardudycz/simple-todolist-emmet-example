@@ -1,10 +1,5 @@
 import {DeciderSpecification} from '@event-driven-io/emmett';
-import {
-    ResolveTaskCommand,
-    ResolveTaskInitialState,
-    decide,
-    evolve,
-} from './ResolveTaskCommand';
+import {ResolveTaskCommand, ResolveTaskInitialState, decide, evolve} from './ResolveTaskCommand';
 import {describe, it} from 'node:test';
 
 describe('Resolve Task Specification', () => {
@@ -25,12 +20,14 @@ describe('Resolve Task Specification', () => {
 
         given([])
             .when(command)
-            .then([{
-                type: 'TaskResolved',
-                data: {
-                    id: 'task-1',
+            .then([
+                {
+                    type: 'TaskResolved',
+                    data: {
+                        id: 'task-1',
+                    },
+                    metadata: {},
                 },
-                metadata: {},
-            }]);
+            ]);
     });
 });
