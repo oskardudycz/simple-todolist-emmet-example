@@ -11,7 +11,7 @@ export const api =
     ): WebApiSetup =>
         (router: Router): void => {
 
-            router.post('/api/replay/:projection', async (req: Request, res: Response) => {
+            router.post('/api/replay/:projection', async (req: Request<{projection: string}>, res: Response) => {
                 // Replay is a privileged operational action — require a sys user.
                 const {error} = await requireSysUser(req, res); // sends 401/403 on failure
                 if (error) return;

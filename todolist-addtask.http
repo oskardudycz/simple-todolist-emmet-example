@@ -1,0 +1,22 @@
+@taskId = 00000000-0000-4000-8000-000000000002
+
+### Authenticate
+# @name login
+POST {{$dotenv SUPABASE_URL}}/auth/v1/token?grant_type=password
+apikey: {{$dotenv SUPABASE_PUBLISHABLE_KEY}}
+Content-Type: application/json
+
+{
+  "email": "{{$dotenv SUPABASE_USER_EMAIL}}",
+  "password": "{{$dotenv SUPABASE_USER_PASSWORD}}"
+}
+
+### Add a task
+POST {{baseUrl}}/api/addtask/{{taskId}}
+Authorization: Bearer {{login.response.body.$.access_token}}
+Content-Type: application/json
+correlation_id: {{taskId}}
+
+{
+  "name": "Buy groceries"
+}

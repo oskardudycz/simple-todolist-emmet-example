@@ -1,5 +1,5 @@
 import {postgreSQLRawSQLProjection} from '@event-driven-io/emmett-postgresql';
-import {sql, SQL} from '@event-driven-io/dumbo';
+import {RawSQL, SQL} from '@event-driven-io/dumbo';
 import knex, {Knex} from 'knex';
 import type {TaskAdded, TaskResolved} from '../TodoListEvents';
 
@@ -19,12 +19,12 @@ export const TasksProjection = postgreSQLRawSQLProjection<TasksEvents>({
     name: 'TasksProjection',
     canHandle: ['TaskAdded', 'TaskResolved'],
     evolve: async (event, context): Promise<SQL[]> => {
-        const db = getKnexInstance(context.connection.connectionString);
+        const db = getKnexInstance(context.session.connectionOptions!.connectionString!);
 
         try {
             switch (event.type) {
                 case 'TaskAdded':
-                    return [sql(db(tableName)
+                    return [RawSQL`${db(tableName)
                         .withSchema('public')
                         .insert({
                             id: event.data.id,
@@ -32,14 +32,14 @@ export const TasksProjection = postgreSQLRawSQLProjection<TasksEvents>({
                         })
                         .onConflict('id')
                         .merge(['name'])
-                        .toQuery())];
+                        .toQuery()}`];
 
                 case 'TaskResolved':
-                    return [sql(db(tableName)
+                    return [RawSQL`${db(tableName)
                         .withSchema('public')
                         .where({id: event.data.id})
                         .delete()
-                        .toQuery())];
+                        .toQuery()}`];
 
                 default:
                     return [];
