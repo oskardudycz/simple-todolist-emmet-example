@@ -1,6 +1,6 @@
 import {postgreSQLRawSQLProjection} from '@event-driven-io/emmett-postgresql';
-import {RawSQL, SQL} from '@event-driven-io/dumbo';
-import {sql} from '../../../common/sql';
+import type {SQL} from '@event-driven-io/dumbo';
+import {knexTable, sql} from '../../../common/db';
 import type {TodoListDefined} from '../TodoListEvents';
 
 export const tableName = 'todo_lists';
@@ -12,22 +12,24 @@ export type TodoListsReadModel = {
 
 type TodoListsEvents = TodoListDefined;
 
+const todoLists = () => knexTable<TodoListsReadModel>(tableName).withSchema('public');
+
 export const TodoListsProjection = postgreSQLRawSQLProjection<TodoListsEvents>({
     name: 'TodoListsProjection',
     canHandle: ['TodoListDefined'],
-    evolve: async (event): Promise<SQL[]> => {
+    evolve: (event): SQL[] => {
         switch (event.type) {
             case 'TodoListDefined':
                 return [
-                    RawSQL`${sql(tableName)
-                        .withSchema('public')
-                        .insert({
-                            id: event.data.id,
-                            name: event.data.name,
-                        })
-                        .onConflict('id')
-                        .merge(['name'])
-                        .toQuery()}`,
+                    sql(
+                        todoLists()
+                            .insert({
+                                id: event.data.id,
+                                name: event.data.name,
+                            })
+                            .onConflict('id')
+                            .merge(['name']),
+                    ),
                 ];
 
             default:

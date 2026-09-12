@@ -1,5 +1,4 @@
-import type pg from 'pg';
-import {sql} from './sql';
+import type {Knex} from 'knex';
 import type {
     AnyMessage,
     AnyRecordedMessageMetadata,
@@ -7,7 +6,7 @@ import type {
 } from '@event-driven-io/emmett';
 
 export const storeDlqMessage = async (
-    pool: pg.Pool,
+    db: Knex,
     processorId: string,
     message: RecordedMessage<AnyMessage, AnyRecordedMessageMetadata>,
     error: unknown,
@@ -27,17 +26,12 @@ export const storeDlqMessage = async (
                 (key, value) => (typeof value === 'bigint' ? value.toString() : value),
             )}`,
         );
-        const {sql: text, bindings} = sql('processor_dlq')
-            .insert({
-                processor_id: processorId,
-                stream_id: message.metadata.streamName,
-                event,
-                error: errorMessage,
-            })
-            .toSQL()
-            .toNative();
-
-        await pool.query(text, bindings as unknown[]);
+        await db('processor_dlq').insert({
+            processor_id: processorId,
+            stream_id: message.metadata.streamName,
+            event,
+            error: errorMessage,
+        });
     } catch (dlqError) {
         console.error('Failed to write to processor_dlq:', dlqError);
     }

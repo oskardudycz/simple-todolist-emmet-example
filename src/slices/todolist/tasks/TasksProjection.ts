@@ -1,6 +1,6 @@
 import {postgreSQLRawSQLProjection} from '@event-driven-io/emmett-postgresql';
-import {RawSQL, SQL} from '@event-driven-io/dumbo';
-import {sql} from '../../../common/sql';
+import type {SQL} from '@event-driven-io/dumbo';
+import {knexTable, sql} from '../../../common/db';
 import type {TaskAdded, TaskResolved} from '../TodoListEvents';
 
 export const tableName = 'tasks';
@@ -12,32 +12,28 @@ export type TasksReadModel = {
 
 type TasksEvents = TaskAdded | TaskResolved;
 
+const tasks = () => knexTable<TasksReadModel>(tableName).withSchema('public');
+
 export const TasksProjection = postgreSQLRawSQLProjection<TasksEvents>({
     name: 'TasksProjection',
     canHandle: ['TaskAdded', 'TaskResolved'],
-    evolve: async (event): Promise<SQL[]> => {
+    evolve: (event): SQL[] => {
         switch (event.type) {
             case 'TaskAdded':
                 return [
-                    RawSQL`${sql(tableName)
-                        .withSchema('public')
-                        .insert({
-                            id: event.data.id,
-                            name: event.data.name,
-                        })
-                        .onConflict('id')
-                        .merge(['name'])
-                        .toQuery()}`,
+                    sql(
+                        tasks()
+                            .insert({
+                                id: event.data.id,
+                                name: event.data.name,
+                            })
+                            .onConflict('id')
+                            .merge(['name']),
+                    ),
                 ];
 
             case 'TaskResolved':
-                return [
-                    RawSQL`${sql(tableName)
-                        .withSchema('public')
-                        .where({id: event.data.id})
-                        .delete()
-                        .toQuery()}`,
-                ];
+                return [sql(tasks().where({id: event.data.id}).delete())];
 
             default:
                 return [];

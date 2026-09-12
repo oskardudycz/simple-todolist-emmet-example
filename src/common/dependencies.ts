@@ -1,5 +1,5 @@
 import type {PostgresEventStore} from '@event-driven-io/emmett-postgresql';
-import type pg from 'pg';
+import type {Knex} from 'knex';
 import type {Authenticate} from '../supabase/requireUser';
 
 export type CommandSliceDependencies = {
@@ -7,8 +7,8 @@ export type CommandSliceDependencies = {
     authenticate?: Authenticate;
 };
 
-/** Read models live in the database, so query slices run on the shared pool instead. */
+/** Read models live in the database, so query slices run knex on the event store's pool. */
 export type QuerySliceDependencies = {
-    pool: pg.Pool;
+    db: Knex;
     authenticate?: Authenticate;
 };

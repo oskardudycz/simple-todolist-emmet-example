@@ -72,7 +72,7 @@ File: `src/slices/{context}/{SliceName}/{SliceName}Command.ts`
 import type {Command} from '@event-driven-io/emmett';
 import {CommandHandler} from '@event-driven-io/emmett';
 import {type {Context}Events} from '../{Context}Events';
-import {findEventstore} from '../../../common/loadPostgresEventstore';
+import type {PostgresEventStore} from '@event-driven-io/emmett-postgresql';
 
 // 1. Command type — data fields come from slice.json commands[]
 export type {SliceName}Command = Command<'{SliceName}', {
@@ -138,8 +138,11 @@ const {SliceName}CommandHandler = CommandHandler<{SliceName}State, {Context}Even
     initialState: {SliceName}InitialState,
 });
 
-export const handle{SliceName} = async (id: string, command: {SliceName}Command) => {
-    const eventStore = await findEventstore();
+export const handle{SliceName} = async (
+    eventStore: PostgresEventStore,
+    id: string,
+    command: {SliceName}Command,
+) => {
     const result = await {SliceName}CommandHandler(
         eventStore,
         id,
@@ -163,9 +166,13 @@ export const handle{SliceName} = async (id: string, command: {SliceName}Command)
 
 ---
 
-## Step 4 — Create `{SliceName}.test.ts`
+## Step 4 — Create `{SliceName}.unit.test.ts`
 
-File: `src/slices/{context}/{SliceName}/{SliceName}.test.ts`
+File: `src/slices/{context}/{SliceName}/{SliceName}.unit.test.ts`
+
+> The suffix is what makes the file run: `npm run test:unit` globs `src/**/*.unit.test.ts`,
+> `test:int` globs `*.int.test.ts`, `test:e2e` globs `*.e2e.test.ts`. A plain `.test.ts` runs
+> in no suite at all.
 
 Use `DeciderSpecification` for unit tests. Derive test scenarios from `specifications[]` in the slice.json.
 
@@ -251,80 +258,187 @@ Skip (do not fabricate) a segment when the command beat has no immediately-follo
 
 File: `src/slices/{context}/{SliceName}/routes.ts`
 
-> **Concrete example**: `src/slices/example/routes.ts` — shows the full pattern with `requireUser`, `assertNotEmpty`, error mapping, and OpenAPI annotations. Read it before implementing.
+> **Concrete example**: `src/slices/todolist/addtask/routes.ts`. Read it before implementing.
+
+A command slice takes its dependencies as an argument — the event store and the
+authenticator — so tests can hand it a container-backed store and a stub auth. Never call
+`findEventstore()` from a handler.
 
 ```typescript
 import {Request, Response, Router} from 'express';
+import {assertNotEmptyString} from '@event-driven-io/emmett';
 import {WebApiSetup} from '@event-driven-io/emmett-expressjs';
 import {requireUser} from '../../../supabase/requireUser';
+import {CommandSliceDependencies} from '../../../common/dependencies';
+import {to{Context}StreamId} from '../{Context}Events';
 import {{SliceName}Command, handle{SliceName}} from './{SliceName}Command';
 
-export const api = (): WebApiSetup => (router: Router): void => {
+export const api = ({eventStore, authenticate}: CommandSliceDependencies): WebApiSetup => (router: Router): void => {
 
     router.post('/api/{slicename}/:id', async (req: Request<{id: string}>, res: Response) => {
-        const auth = await requireUser(req, res);
+        const auth = await requireUser(req, res, authenticate);
         if (auth.error) return;
 
-        const id = req.params.id;
+        const id = assertNotEmptyString(req.params.id);
         const correlationId = req.header('correlation_id') ?? id;
 
-        try {
-            const command: {SliceName}Command = {
-                type: '{SliceName}',
-                data: {
-                    id,
-                    // ... map from req.body
-                },
-                metadata: {
-                    correlation_id: correlationId,
-                    causation_id: id,
-                },
-            };
+        const result = await handle{SliceName}(eventStore, to{Context}StreamId(id), {
+            type: '{SliceName}',
+            data: {
+                id,
+                // ... map from req.body, validating with assertNotEmptyString etc.
+            },
+            metadata: {
+                correlation_id: correlationId,
+                causation_id: id,
+            },
+        });
 
-            const result = await handle{SliceName}(id, command);
+        res.set('correlation_id', correlationId);
+        res.set('causation_id', id);
 
-            res.set('correlation_id', correlationId);
-            res.set('causation_id', id);
-
-            return res.status(201).json({
-                ok: true,
-                next_expected_stream_version: result.nextExpectedStreamVersion?.toString(),
-                last_event_global_position: result.lastEventGlobalPosition?.toString(),
-            });
-        } catch (err: any) {
-            const errorMessage = errorMapping(err?.code);
-            if (errorMessage) {
-                return res.status(409).json({error: errorMessage});
-            }
-            console.error(err);
-            return res.status(500).json({ok: false, error: 'Server error'});
-        }
+        return res.status(201).json({
+            ok: true,
+            next_expected_stream_version: result.nextExpectedStreamVersion?.toString(),
+            last_event_global_position: result.lastEventGlobalPosition?.toString(),
+        });
     });
 };
+```
 
-const errorMapping = (code: string): string | null => {
-    switch (code) {
-        case 'already_processed': return 'This action has already been performed.';
-        // add other error codes from slice.json specifications
-        default: return null;
+**Error mapping**: domain errors thrown as `{code, message}` are turned into HTTP responses
+by emmett-expressjs' default error handler. Add a `try/catch` mapping to 409 only when a
+specification in the slice.json calls for a specific status and body:
+
+```typescript
+} catch (err: any) {
+    if (err?.code === 'already_processed') {
+        return res.status(409).json({error: 'This action has already been performed.'});
     }
-};
+    throw err;
+}
 ```
 
 > **Route params on the `Request` generic**: Declare them as `Request<{id: string}>` — Express 5 types `ParamsDictionary` as `{[key: string]: string | string[]}`, so a bare `Request` makes `req.params.id` a `string | string[]`. Code that passes it on as a string will not compile.
 
----
+### Testing the route
 
-## Step 6 — Wire up the route
+Step 4 covers `decide`. Add `{SliceName}.int.test.ts` for the route itself — the stream id, the appended events and the status code — against a real PostgreSQL container. Put this slice's request builders in `src/testing/{context}Api.ts` and its event builders in `src/testing/{context}Events.ts` rather than hand-rolling them in the test.
 
-Find the application's router registration (usually `src/index.ts` or `src/app.ts`) and add:
+> **Concrete example**: `src/slices/todolist/addtask/AddTask.int.test.ts` — copy its shape.
 
 ```typescript
-import {api as {SliceName}Api} from './slices/{context}/{SliceName}/routes';
+import {after, before, describe, it} from 'node:test';
+import type {PostgresEventStore} from '@event-driven-io/emmett-postgresql';
+import {ApiSpecification, getApplication} from '@event-driven-io/emmett-expressjs';
+import {PostgresTestDatabase, startPostgresTestDatabase} from '../../../testing/postgresTestDatabase';
+import {createEventStore} from '../../../common/loadPostgresEventstore';
+import {allowAnyUser} from '../../../testing/stubAuth';
+import {appended, created, {requestBuilder}} from '../../../testing/{context}Api';
+import {correlatedWith, {eventBuilder}, {streamBuilder}} from '../../../testing/{context}Events';
+import {{Context}Events} from '../{Context}Events';
+import {api} from './routes';
 
-// inside the router setup:
-{SliceName}Api()(router);
+describe('{SliceName} Api Specification', () => {
+    let database: PostgresTestDatabase;
+    let eventStore: PostgresEventStore;
+    let given: ApiSpecification<{Context}Events>;
+
+    before(async () => {
+        database = await startPostgresTestDatabase();
+        eventStore = await createEventStore(database.connectionString);
+
+        given = ApiSpecification.for<{Context}Events, PostgresEventStore>({
+            getEventStore: () => eventStore,
+            getApplication: (es) => getApplication({
+                apis: [api({eventStore: es, authenticate: allowAnyUser})],
+                enableDefaultExpressEtag: true,
+            }),
+        });
+    });
+
+    after(async () => {
+        await eventStore?.close();
+        await database?.stop();
+    });
+
+    it('emits {EmittedEventName}', async () => {
+        const id = '{slicename}-int-1';
+
+        await given({streamBuilder}(id))   // given() with no arguments = empty stream
+            .when({requestBuilder}(id, {field: 'value'}))
+            .then([
+                created(1, {correlationId: id, causationId: id}),
+                appended(id, [{eventBuilder}(id, 'value', correlatedWith(id))]),
+            ]);
+    });
+});
 ```
+
+Write one `it` per specification that the route can exercise, plus one for an unauthenticated caller.
+
+---
+
+## Step 6 — Create `{SliceName}.e2e.test.ts`
+
+File: `src/slices/{context}/{SliceName}/{SliceName}.e2e.test.ts`
+
+The same command driven through the whole application — `createApp()`, the real auth gate, a real Supabase JWT.
+
+`getE2EEnvironment()` from `src/testing/e2eEnvironment.ts` signs the e2e user in and builds the app. `scenarioRunner(() => environment)` returns a `scenario(...)` that replaces `it`: it reads the environment at run time and skips the body, with a reason, when Supabase is unconfigured or unreachable — so the suite stays green without credentials. `authenticatedAs(token)` wraps the request builders so every `api.*` call carries the JWT.
+
+> **Concrete example**: `src/slices/todolist/addtask/AddTask.e2e.test.ts` — copy its shape.
+
+```typescript
+import {before, describe} from 'node:test';
+import {ApiE2ESpecification, expectResponse} from '@event-driven-io/emmett-expressjs';
+import {E2EEnvironment, getE2EEnvironment, scenarioRunner} from '../../../testing/e2eEnvironment';
+import {authenticatedAs, {requestBuilder}} from '../../../testing/{context}Api';
+
+describe('{SliceName} E2E', () => {
+    let environment: E2EEnvironment;
+    let given: ApiE2ESpecification;
+    let api: ReturnType<typeof authenticatedAs>;
+
+    // reads `environment` at run time — it is only resolved in `before`
+    const scenario = scenarioRunner(() => environment);
+
+    before(async () => {
+        environment = await getE2EEnvironment();
+
+        if (environment.available) {
+            const app = environment.app;
+            api = authenticatedAs(environment.token);
+            given = ApiE2ESpecification.for({getApplication: () => app});
+        }
+    });
+
+    scenario('{SliceName} succeeds', async () => {
+        const id = `{slicename}-e2e-${Date.now()}`;
+
+        await given(api.{precedingCommand}(id))
+            .when(api.{requestBuilder}(id, {field: 'value'}))
+            .then([expectResponse(201, {body: {ok: true}})]);
+    });
+
+    scenario('rejects a request without a token', async () => {
+        const id = `{slicename}-e2e-anon-${Date.now()}`;
+
+        // the bare builder, not api.*, so no Authorization header is sent
+        await given()
+            .when({requestBuilder}(id, {field: 'value'}))
+            .then([expectResponse(401)]);
+    });
+});
+```
+
+E2E runs against a shared database, so give every scenario a unique id (`${Date.now()}`) instead of the fixed `test-id` the unit tests use.
+
+---
+
+## Step 7 — Wire up the route
+
+Nothing to do. `server.ts` globs `dist/src/slices/**/routes{,-*}.js` and calls each module's exported `api` with `{eventStore, db, authenticate}`. A slice is wired as soon as the file exists and exports an `api` that accepts that object.
 
 ---
 
@@ -333,7 +447,8 @@ import {api as {SliceName}Api} from './slices/{context}/{SliceName}/routes';
 - **Metadata optional chaining**: always use `command.metadata?.correlation_id` (metadata may be absent in tests)
 - **Throw with code**: `throw {code: 'snake_case_code', message: '...'}` — routes catch by `err?.code`
 - **Idempotency in evolve**: track processed IDs in state, check in decide
-- **Stream ID**: pass the aggregate ID as the first argument to `handle{SliceName}(id, command)` — the stream is `{context}-{id}`
+- **Stream ID**: the route builds it with `to{Context}StreamId(id)` from `{Context}Events.ts` and passes it to `handle{SliceName}(eventStore, streamId, command)` — the stream is `{context}-{id}`
+- **Dependencies are injected**: `api({eventStore, authenticate})`; the handler never calls `findEventstore()`
 - **No side effects in evolve**: evolve must be a pure function; all side effects go in decide or the route
 
 ---
@@ -342,9 +457,14 @@ import {api as {SliceName}Api} from './slices/{context}/{SliceName}/routes';
 
 ```
 src/slices/{context}/{SliceName}/
-├── {SliceName}Command.ts    ← command handler (decide/evolve/handle)
-├── {SliceName}.test.ts      ← DeciderSpecification tests
-└── routes.ts                ← Express POST endpoint
+├── {SliceName}Command.ts      ← command handler (decide/evolve/handle)
+├── {SliceName}.unit.test.ts   ← DeciderSpecification tests
+├── {SliceName}.int.test.ts    ← ApiSpecification tests over a real container
+├── {SliceName}.e2e.test.ts    ← same command through the whole app and real Supabase
+└── routes.ts                  ← Express POST endpoint
+
+src/testing/
+└── {context}Api.ts            ← add this slice's request builders
 
 src/slices/{context}/
 └── {Context}Events.ts       ← add new event types here (update union)
@@ -358,8 +478,10 @@ Before marking this slice as `Done`, verify the implementation against slice.jso
 
 - [ ] Every field in `commands[].data` has a corresponding field in the Command type — no invented fields, none missing
 - [ ] Every event in `events[]` has a corresponding type in `{Context}Events.ts` — names match exactly
+- [ ] All three test files exist — `.unit.test.ts`, `.int.test.ts`, `.e2e.test.ts`; the suffix decides which suite runs them
+- [ ] E2E scenarios use `scenario`, not `it`, and unique ids — e2e runs against a shared database
 - [ ] Every field in each event's data has a corresponding field in the TypeScript event type
-- [ ] Every entry in `specifications[]` maps to a test case in `{SliceName}.test.ts`
+- [ ] Every entry in `specifications[]` maps to a test case in `{SliceName}.unit.test.ts`
 - [ ] If `storylines[]` is present, each command-to-event transition relevant to this slice has a corresponding test (or a documented reason it was skipped)
 - [ ] No business rules, defaults, or constraints were added that do not appear in slice.json `description` or `comments`
 - [ ] No field names were assumed or guessed — if a field is not in slice.json, it is not in the code

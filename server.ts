@@ -1,10 +1,10 @@
 import {join} from 'path';
-import {configureApplication, startAPI, WebApiSetup} from '@event-driven-io/emmett-expressjs';
+import {getApplication, startAPI, WebApiSetup} from '@event-driven-io/emmett-expressjs';
 import {glob} from 'glob';
 import express, {Application, Request, Response} from 'express';
 import {jsonReplacer} from './src/common/json';
-import {Authenticate, requireUser, supabaseAuthenticate} from './src/supabase/requireUser';
-import {endPgPool, getPgPool, postgresUrl} from './src/common/db';
+import {requireUser, supabaseAuthenticate} from './src/supabase/requireUser';
+import {endPgPool, getPgPool, knexInstance, postgresUrl} from './src/common/db';
 import swaggerUi from 'swagger-ui-express';
 import {specs} from './src/swagger';
 import cors from 'cors';
@@ -12,14 +12,9 @@ import {findEventstore} from './src/common/loadPostgresEventstore';
 import {PostgresEventStore} from '@event-driven-io/emmett-postgresql';
 import {CommandSliceDependencies, QuerySliceDependencies} from './src/common/dependencies';
 
-export const createApp = async (options?: {
-    eventStore?: PostgresEventStore;
-    authenticate?: Authenticate;
-}): Promise<Application> => {
-    const eventStore = options?.eventStore ?? (await findEventstore());
-    const authenticate = options?.authenticate ?? supabaseAuthenticate;
-    const pool = getPgPool(postgresUrl);
-
+export const createApp = async (): Promise<Application> => {
+    const eventStore = await findEventstore();
+    const db = knexInstance(getPgPool(postgresUrl));
     const slicesBase = join(__dirname, 'dist/src/slices');
     const routesPattern = join(slicesBase, '**/routes{,-*}.js');
 
@@ -41,6 +36,30 @@ export const createApp = async (options?: {
             : 'Common routes disabled (set COMMON_ROUTES_ENABLED=true to enable)',
     );
 
+    const rootApp: Application = express();
+    rootApp.set('json replacer', jsonReplacer);
+
+    const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((o) => o.trim()) ?? [
+        'http://localhost:3000',
+        'http://localhost:3001',
+    ];
+    rootApp.use(
+        cors({
+            origin: corsOrigins,
+            credentials: true,
+            methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+            allowedHeaders: [
+                'Content-Type',
+                'Content-Encoding',
+                'accept-encoding',
+                'Authorization',
+                'x-user-id',
+                'x-causation-id',
+                'x-correlation-id',
+            ],
+        }),
+    );
+
     const webApis: WebApiSetup[] = [];
 
     for (const file of routeFiles.concat(commonRouteFiles)) {
@@ -48,7 +67,8 @@ export const createApp = async (options?: {
             api: (dependencies: CommandSliceDependencies & QuerySliceDependencies) => WebApiSetup;
         } = await import(file);
         if (typeof webApiModule.api == 'function') {
-            webApis.push(webApiModule.api({eventStore, pool, authenticate}));
+            const module = webApiModule.api({eventStore, db, authenticate: supabaseAuthenticate});
+            webApis.push(module);
         } else {
             console.error(`Expected api function to be defined in ${file}`);
         }
@@ -76,6 +96,7 @@ export const createApp = async (options?: {
         console.log(`${signal} received, shutting down processors...`);
         await Promise.allSettled(startedProcessors.map((p) => p.stop()));
         await eventStore.close();
+        await db.destroy();
         await endPgPool({connectionString: postgresUrl});
         console.log('shutdown complete');
         process.exit(0);
@@ -84,38 +105,42 @@ export const createApp = async (options?: {
     process.on('SIGINT', () => shutdown('SIGINT'));
     process.on('SIGTERM', () => shutdown('SIGTERM'));
 
-    const app: Application = express();
-    app.set('json replacer', jsonReplacer);
+    // Get the main application from emmett
+    const childApp: Application = getApplication({
+        apis: webApis,
+        disableJsonMiddleware: false,
+        enableDefaultExpressEtag: true,
+    });
+    childApp.set('json replacer', jsonReplacer);
 
-    const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((o) => o.trim()) ?? [
-        'http://localhost:3000',
-        'http://localhost:3001',
-    ];
-    app.use(
-        cors({
-            origin: corsOrigins,
-            credentials: true,
-            methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-            allowedHeaders: [
-                'Content-Type',
-                'Content-Encoding',
-                'accept-encoding',
-                'Authorization',
-                'x-user-id',
-                'x-causation-id',
-                'x-correlation-id',
-            ],
-        }),
-    );
-
-    app.use((req: Request, _res: Response, next) => {
-        console.log(`[${req.method}] ${req.path}`);
-        next();
+    // Protected user info endpoint - requires JWT token in Authorization header
+    childApp.get('/api/user', async (req: Request, res: Response) => {
+        console.log('API user route hit'); // Debug log
+        try {
+            const result = await supabaseAuthenticate(req);
+            if (result.error !== null) {
+                // supabaseAuthenticate never touches the response
+                if (!res.headersSent) {
+                    res.status(401).json({error: result.error});
+                }
+            } else {
+                res.status(200).json({
+                    user_id: result.user.id,
+                    email: result.user.email,
+                    metadata: result.user.user_metadata,
+                });
+            }
+        } catch (error) {
+            console.error('Error in /api/user:', error);
+            if (!res.headersSent) {
+                res.status(500).json({error: 'Internal server error'});
+            }
+        }
     });
 
     // Swagger UI endpoints
-    app.use('/api-docs', swaggerUi.serve);
-    app.get(
+    childApp.use('/api-docs', swaggerUi.serve);
+    childApp.get(
         '/api-docs',
         swaggerUi.setup(specs, {
             swaggerOptions: {
@@ -130,39 +155,34 @@ export const createApp = async (options?: {
     );
 
     // OpenAPI spec endpoint
-    app.get('/swagger.json', (req: Request, res: Response) => {
+    childApp.get('/swagger.json', (req: Request, res: Response) => {
         res.setHeader('Content-Type', 'application/json');
         res.send(specs);
     });
 
-    // Closed-by-default auth gate: every route below requires a valid Supabase JWT.
-    // The public routes above are registered before it, which is what exempts them.
-    app.use(async (req: Request, res: Response, next) => {
+    rootApp.use((req: Request, _res: Response, next) => {
+        console.log(`[${req.method}] ${req.path}`);
+        next();
+    });
+
+    rootApp.use(express.json());
+
+    // Closed-by-default auth gate: every route requires a valid Supabase JWT
+    // except the explicitly public paths below. This guarantees new slice
+    // routes are protected even if a handler forgets to call requireUser.
+    const PUBLIC_PATHS = ['/api-docs', '/swagger.json', '/health'];
+    const isPublicPath = (p: string): boolean =>
+        PUBLIC_PATHS.some((pub) => p === pub || p.startsWith(pub + '/'));
+
+    rootApp.use(async (req: Request, res: Response, next) => {
         if (req.method === 'OPTIONS') return next(); // CORS preflight
-        // sends 401 on failure
-        const {error} = await requireUser(req, res, authenticate);
+        if (isPublicPath(req.path)) return next(); // docs / health
+        const {error} = await requireUser(req, res); // sends 401 on failure
         if (error) return; // response already sent
         next();
     });
 
-    // Protected user info endpoint - requires JWT token in Authorization header
-    app.get('/api/user', async (req: Request, res: Response) => {
-        const result = await authenticate(req);
-        if (result.error !== null) {
-            res.status(401).json({error: result.error});
-        } else {
-            res.status(200).json({
-                user_id: result.user.id,
-                email: result.user.email,
-                metadata: result.user.user_metadata,
-            });
-        }
-    });
-
-    configureApplication(app, {
-        apis: webApis,
-        enableDefaultExpressEtag: true,
-    });
+    rootApp.use(childApp);
 
     process.on('unhandledRejection', (reason, promise) => {
         console.error('⛔ Unhandled Rejection:', reason);
@@ -171,7 +191,7 @@ export const createApp = async (options?: {
         }
     });
 
-    return app;
+    return rootApp;
 };
 
 const startServer = async () => {

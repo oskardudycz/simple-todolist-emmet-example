@@ -1,8 +1,9 @@
 import {after, before, describe, it} from 'node:test';
 import type {PostgresEventStore} from '@event-driven-io/emmett-postgresql';
 import {ApiSpecification, expectResponse, getApplication} from '@event-driven-io/emmett-expressjs';
-import type pg from 'pg';
+import type {Knex} from 'knex';
 import {endPgPool, getPgPool} from '@event-driven-io/dumbo/pg';
+import {knexInstance} from '../../../common/db';
 import {
     PostgresTestDatabase,
     startPostgresTestDatabase,
@@ -17,13 +18,14 @@ import {api} from './routes';
 describe('Todo Lists Query Api Specification', () => {
     let database: PostgresTestDatabase;
     let eventStore: PostgresEventStore;
-    let pool: pg.Pool;
+    let db: Knex;
     let given: ApiSpecification<TodoListEvents>;
     let givenUnauthenticated: ApiSpecification<TodoListEvents>;
 
     before(async () => {
         database = await startPostgresTestDatabase();
-        pool = getPgPool(database.connectionString);
+        const pool = getPgPool(database.connectionString);
+        db = knexInstance(pool);
         eventStore = await createEventStore(database.connectionString, pool);
 
         const specificationFor = (authenticate: typeof allowAnyUser) =>
@@ -31,7 +33,7 @@ describe('Todo Lists Query Api Specification', () => {
                 getEventStore: () => eventStore,
                 getApplication: (es) =>
                     getApplication({
-                        apis: [api({pool, authenticate})],
+                        apis: [api({db, authenticate})],
                         enableDefaultExpressEtag: true,
                     }),
             });
@@ -41,6 +43,7 @@ describe('Todo Lists Query Api Specification', () => {
     });
 
     after(async () => {
+        await db?.destroy();
         await eventStore?.close();
         await endPgPool({connectionString: database.connectionString});
         await database?.stop();

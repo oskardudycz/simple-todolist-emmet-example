@@ -1,14 +1,19 @@
 name: Build and test
 
 on:
+  # run it on push to the default repository branch
   push:
     branches: [main]
+
+  # run it during pull request
   pull_request:
+
+  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 jobs:
-  build-and-test:
-    name: Build and test
+  build-and-test-code:
+    name: Build application code
     runs-on: ubuntu-latest
 
     steps:
@@ -18,7 +23,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -30,8 +35,5 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
 
-      # Integration tests start Postgres and Flyway containers through testcontainers,
-      # which hosted runners provide out of the box. The e2e suite is not run here: it
-      # needs a real Supabase project, and skips itself when one is not configured.
       - name: Integration tests
         run: npm run test:int
