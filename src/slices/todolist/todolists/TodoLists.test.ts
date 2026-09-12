@@ -1,4 +1,5 @@
 import {before, after, describe, it} from 'node:test';
+import type {TodoListDefined} from '../TodoListEvents';
 import {PostgreSQLProjectionAssert, PostgreSQLProjectionSpec} from '@event-driven-io/emmett-postgresql';
 import {TodoListsProjection, tableName} from './TodoListsProjection';
 import {PostgreSqlContainer, StartedPostgreSqlContainer} from '@testcontainers/postgresql';
@@ -12,7 +13,7 @@ describe('Todo Lists Specification', () => {
     let postgres: StartedPostgreSqlContainer;
     let connectionString: string;
     let db: Knex;
-    let given: PostgreSQLProjectionSpec<any>;
+    let given: PostgreSQLProjectionSpec<TodoListDefined>;
 
     before(async () => {
         postgres = await new PostgreSqlContainer('postgres').start();

@@ -1,9 +1,9 @@
 import {getKnexInstance} from './db';
-import type {AnyRecordedMessageMetadata, RecordedMessage} from '@event-driven-io/emmett';
+import type {AnyMessage, AnyRecordedMessageMetadata, RecordedMessage} from '@event-driven-io/emmett';
 
 export const storeDlqMessage = async (
     processorId: string,
-    message: RecordedMessage<any, AnyRecordedMessageMetadata>,
+    message: RecordedMessage<AnyMessage, AnyRecordedMessageMetadata>,
     error: unknown,
 ): Promise<void> => {
 

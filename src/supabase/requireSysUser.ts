@@ -1,8 +1,9 @@
 import {Request, Response} from 'express';
+import type {User} from '@supabase/supabase-js';
 import {requireUser} from './requireUser';
 
 type RequireSysUserResult = {
-    user: any;
+    user: User;
     error: null;
 } | {
     user: null;

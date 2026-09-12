@@ -1,8 +1,9 @@
 import {createAuthenticatedClient} from "./api";
+import type {User} from '@supabase/supabase-js';
 import {Request, Response} from "express"
 
 type RequireUserResult = {
-    user: any;
+    user: User;
     error: null;
 } | {
     user: null;

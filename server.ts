@@ -4,7 +4,7 @@ import {glob} from "glob";
 import express, {Application, Request, Response} from 'express';
 import {jsonBigIntReplacer} from './src/util/sanitize';
 import {requireUser} from "./src/supabase/requireUser";
-import {getKnexInstance, closeDb} from "./src/common/db";
+import {closeDb} from "./src/common/db";
 import swaggerUi from 'swagger-ui-express'
 import {specs} from './src/swagger';
 import cors from 'cors';
@@ -52,7 +52,7 @@ async function startServer() {
     for (const file of routeFiles.concat(commonRouteFiles)) {
         const webApiModule: { api: () => WebApiSetup } = await import(file);
         if (typeof webApiModule.api == 'function') {
-            var module = webApiModule.api()
+            const module = webApiModule.api()
             webApis.push(module);
         } else {
             console.error(`Expected api function to be defined in ${file}`);
@@ -95,7 +95,7 @@ async function startServer() {
         console.log('API user route hit'); // Debug log
         try {
             const result = await requireUser(req, res, false)
-            if (result.error) {
+            if (result.error !== null) {
                 // Response already sent by requireUser if sendUnauthorized=true
                 if (!res.headersSent) {
                     res.status(401).json({error: result.error})

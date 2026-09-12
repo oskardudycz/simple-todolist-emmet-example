@@ -5,10 +5,10 @@
 
 const serviceURI = "http://localhost:3000"
 
-export function parseEndpoint(endpoint: string, data?: any) {
-    var parsedEndpoint = endpoint?.startsWith("/") ? endpoint.substring(1) : endpoint
+export function parseEndpoint(endpoint: string, data?: Record<string, unknown>) {
+    const parsedEndpoint = endpoint?.startsWith("/") ? endpoint.substring(1) : endpoint
     return serviceURI + "/" + lowercaseFirstCharacter(parsedEndpoint).replace(/{(\w+)}/g, (match, param) => {
-        return param && data && data[param] !== undefined ? data[param] : match;
+        return param && data && data[param] !== undefined ? String(data[param]) : match;
     })
 }
 

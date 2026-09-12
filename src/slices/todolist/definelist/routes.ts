@@ -35,7 +35,7 @@ export const api = (): WebApiSetup => (router: Router): void => {
                 next_expected_stream_version: result.nextExpectedStreamVersion?.toString(),
                 last_event_global_position: result.lastEventGlobalPosition?.toString(),
             });
-        } catch (err: any) {
+        } catch (err) {
             console.error(err);
             return res.status(500).json({ok: false, error: 'Server error'});
         }

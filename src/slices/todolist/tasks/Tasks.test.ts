@@ -1,4 +1,5 @@
 import {before, after, describe, it} from 'node:test';
+import type {TaskAdded, TaskResolved} from '../TodoListEvents';
 import {PostgreSQLProjectionAssert, PostgreSQLProjectionSpec} from '@event-driven-io/emmett-postgresql';
 import {TasksProjection, tableName} from './TasksProjection';
 import {PostgreSqlContainer, StartedPostgreSqlContainer} from '@testcontainers/postgresql';
@@ -12,7 +13,7 @@ describe('Tasks Specification', () => {
     let postgres: StartedPostgreSqlContainer;
     let connectionString: string;
     let db: Knex;
-    let given: PostgreSQLProjectionSpec<any>;
+    let given: PostgreSQLProjectionSpec<TaskAdded | TaskResolved>;
 
     before(async () => {
         postgres = await new PostgreSqlContainer('postgres').start();
