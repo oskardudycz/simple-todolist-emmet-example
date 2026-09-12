@@ -1,6 +1,8 @@
 {
   "recommendations": [
     "connor4312.nodejs-testing",
-    "humao.rest-client"
+    "humao.rest-client",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode"
   ]
 }
