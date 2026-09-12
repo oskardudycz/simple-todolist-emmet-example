@@ -8,25 +8,15 @@
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
-      "*": [
-        "node_modules/*"
-      ]
+      "*": ["node_modules/*"]
     },
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "lib": [
-      "es2020"
-    ],
+    "lib": ["es2020"],
     "allowJs": true,
     "incremental": true,
     "isolatedModules": true
   },
-  "include": [
-    "**/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "**/*.sample",
-    "realtime-agent"
-  ]
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules", "**/*.sample", "realtime-agent"]
 }

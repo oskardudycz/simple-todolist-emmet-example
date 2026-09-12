@@ -2,13 +2,15 @@ import {Request, Response} from 'express';
 import type {User} from '@supabase/supabase-js';
 import {requireUser} from './requireUser';
 
-type RequireSysUserResult = {
-    user: User;
-    error: null;
-} | {
-    user: null;
-    error: string;
-};
+type RequireSysUserResult =
+    | {
+          user: User;
+          error: null;
+      }
+    | {
+          user: null;
+          error: string;
+      };
 
 /**
  * Requires the caller to be an authenticated system ("sys") user.

@@ -1,10 +1,5 @@
 import {DeciderSpecification} from '@event-driven-io/emmett';
-import {
-    DefineListCommand,
-    DefineListInitialState,
-    decide,
-    evolve,
-} from './DefineListCommand';
+import {DefineListCommand, DefineListInitialState, decide, evolve} from './DefineListCommand';
 import {describe, it} from 'node:test';
 
 describe('Define list Specification', () => {
@@ -26,13 +21,15 @@ describe('Define list Specification', () => {
 
         given([])
             .when(command)
-            .then([{
-                type: 'TodoListDefined',
-                data: {
-                    id: 'list-1',
-                    name: 'Work',
+            .then([
+                {
+                    type: 'TodoListDefined',
+                    data: {
+                        id: 'list-1',
+                        name: 'Work',
+                    },
+                    metadata: {},
                 },
-                metadata: {},
-            }]);
+            ]);
     });
 });

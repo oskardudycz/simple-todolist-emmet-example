@@ -1,10 +1,5 @@
 import {DeciderSpecification} from '@event-driven-io/emmett';
-import {
-    DeleteTaskCommand,
-    DeleteTaskInitialState,
-    decide,
-    evolve,
-} from './DeleteTaskCommand';
+import {DeleteTaskCommand, DeleteTaskInitialState, decide, evolve} from './DeleteTaskCommand';
 import {describe, it} from 'node:test';
 
 describe('Delete Task Specification', () => {
@@ -25,12 +20,14 @@ describe('Delete Task Specification', () => {
 
         given([])
             .when(command)
-            .then([{
-                type: 'TaskDeleted',
-                data: {
-                    id: 'task-1',
+            .then([
+                {
+                    type: 'TaskDeleted',
+                    data: {
+                        id: 'task-1',
+                    },
+                    metadata: {},
                 },
-                metadata: {},
-            }]);
+            ]);
     });
 });

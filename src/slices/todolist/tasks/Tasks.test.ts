@@ -1,6 +1,9 @@
 import {before, after, describe, it} from 'node:test';
 import type {TaskAdded, TaskResolved} from '../TodoListEvents';
-import {PostgreSQLProjectionAssert, PostgreSQLProjectionSpec} from '@event-driven-io/emmett-postgresql';
+import {
+    PostgreSQLProjectionAssert,
+    PostgreSQLProjectionSpec,
+} from '@event-driven-io/emmett-postgresql';
 import {TasksProjection, tableName} from './TasksProjection';
 import {PostgreSqlContainer, StartedPostgreSqlContainer} from '@testcontainers/postgresql';
 import knex, {Knex} from 'knex';
@@ -51,11 +54,13 @@ describe('Tasks Specification', () => {
             }
         };
 
-        await given([{
-            type: 'TaskAdded',
-            data: {id: TEST_ID, name: 'Buy groceries'},
-            metadata: {stream_name: `todolist-${TEST_ID}`},
-        }])
+        await given([
+            {
+                type: 'TaskAdded',
+                data: {id: TEST_ID, name: 'Buy groceries'},
+                metadata: {stream_name: `todolist-${TEST_ID}`},
+            },
+        ])
             .when([])
             .then(assertReadModel);
     });

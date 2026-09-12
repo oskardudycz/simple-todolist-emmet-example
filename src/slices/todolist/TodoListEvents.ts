@@ -7,22 +7,38 @@ type CommonMeta = {
     causation_id?: string;
 };
 
-export type TodoListDefined = Event<'TodoListDefined', {
-    id: string;
-    name: string;
-}, CommonMeta>;
+export type TodoListDefined = Event<
+    'TodoListDefined',
+    {
+        id: string;
+        name: string;
+    },
+    CommonMeta
+>;
 
-export type TaskAdded = Event<'TaskAdded', {
-    id: string;
-    name: string;
-}, CommonMeta>;
+export type TaskAdded = Event<
+    'TaskAdded',
+    {
+        id: string;
+        name: string;
+    },
+    CommonMeta
+>;
 
-export type TaskResolved = Event<'TaskResolved', {
-    id: string;
-}, CommonMeta>;
+export type TaskResolved = Event<
+    'TaskResolved',
+    {
+        id: string;
+    },
+    CommonMeta
+>;
 
-export type TaskDeleted = Event<'TaskDeleted', {
-    id: string;
-}, CommonMeta>;
+export type TaskDeleted = Event<
+    'TaskDeleted',
+    {
+        id: string;
+    },
+    CommonMeta
+>;
 
 export type TodoListEvents = TodoListDefined | TaskAdded | TaskResolved | TaskDeleted;

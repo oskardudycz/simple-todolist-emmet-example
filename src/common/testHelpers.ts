@@ -37,10 +37,14 @@ flyway.cleanDisabled=false
         writeFileSync(tempConfigPath, config, 'utf8');
         execSync(`flyway -configFiles=${tempConfigPath} migrate`, {
             stdio: 'pipe',
-            encoding: 'utf8'
+            encoding: 'utf8',
         });
     } catch (error) {
-        const {message, stdout, stderr} = error as {message?: string; stdout?: string; stderr?: string};
+        const {message, stdout, stderr} = error as {
+            message?: string;
+            stdout?: string;
+            stderr?: string;
+        };
         console.error('Flyway migration failed:', message);
         if (stdout) console.error('STDOUT:', stdout);
         if (stderr) console.error('STDERR:', stderr);
