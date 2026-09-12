@@ -1,4 +1,5 @@
 import {getPostgreSQLEventStore} from "@event-driven-io/emmett-postgresql";
+import {pgEventStoreDriver} from "@event-driven-io/emmett-postgresql/pg";
 import {projections} from "@event-driven-io/emmett";
 import {postgresUrl, getSharedPool} from "./db";
 import {TodoListsProjection} from "../slices/todolist/todolists/TodoListsProjection";
@@ -8,7 +9,9 @@ let eventStoreInstance: ReturnType<typeof getPostgreSQLEventStore> | null = null
 
 export const findEventstore = async () => {
     if (!eventStoreInstance) {
-        eventStoreInstance = getPostgreSQLEventStore(postgresUrl, {
+        eventStoreInstance = getPostgreSQLEventStore({
+            driver: pgEventStoreDriver,
+            connectionString: postgresUrl,
             schema: {
                 autoMigration: "CreateOrUpdate"
             },
